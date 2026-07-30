@@ -1,0 +1,45 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.csproj.user
+*.dbmdl
+*.jfm
+*.sln.docstates
+.vs/
+[Tt]est[Rr]esults/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+packages/
+*.nupkg
+*.snupkg
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## OS files
+.DS_Store
+Thumbs.db
+
+## Logs
+logs/
+*.log
+
+## Environment files
+*.env
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+## SQL Server (LocalDB)
+*.mdf
+*.ldf
+
+## Docker (if used later)
+docker-compose.override.yml
