@@ -6,6 +6,16 @@
   <Folder Name="/src/Application/">
     <Project Path="src/Application/SchoolERP.Application/SchoolERP.Application.csproj" />
   </Folder>
+  <Folder Name="/src/Application/Common/" />
+  <Folder Name="/src/Application/Common/Abstractions/">
+    <File Path="ICommand.cs" />
+  </Folder>
+  <Folder Name="/src/Application/Common/Behaviors/">
+    <File Path="LoggingBehavior.cs" />
+    <File Path="PerformanceBehavior.cs" />
+    <File Path="TransactionBehavior.cs" />
+    <File Path="ValidationBehavior.cs" />
+  </Folder>
   <Folder Name="/src/Domain/">
     <Project Path="src/Domain/SchoolERP.Domain.Shared/SchoolERP.Domain.Shared.csproj" />
     <Project Path="src/Domain/SchoolERP.Domain/SchoolERP.Domain.csproj" />

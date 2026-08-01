@@ -1,8 +1,26 @@
+using FluentValidation;
+using SchoolERP.Application.Common.Abstractions;
+using SchoolERP.Application.Common.Behaviors;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+// 1. MediatR Register karo (Application assembly scan karega)
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(ICommand<>).Assembly);
+
+    // 🔥 Behaviors ka ORDER MATTERS!
+    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));          // Pehle Log
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));       // Phir Validate
+    cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));      // Phir Performance Check
+    cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));      // Last mein Transaction (SaveChanges)
+});
+
+// 2. FluentValidation Scan karo (Saare Validators auto-detect honge)
+builder.Services.AddValidatorsFromAssembly(typeof(ICommand<>).Assembly);
 
 var app = builder.Build();
 
