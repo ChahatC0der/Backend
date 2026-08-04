@@ -1,26 +1,37 @@
+using Finbuckle.MultiTenant;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Behaviors;
+using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ye line honi CHAHIYE
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Ye bhi honi chahiye
+builder.Services.AddScoped<IApplicationDbContext>(provider =>
+    provider.GetRequiredService<AppDbContext>());
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-// 1. MediatR Register karo (Application assembly scan karega)
+// IApplicationDbContext ko AppDbContext se bind karo
+builder.Services.AddScoped<IApplicationDbContext, AppDbContext>();
+
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(ICommand<>).Assembly);
-
-    // 🔥 Behaviors ka ORDER MATTERS!
-    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));          // Pehle Log
-    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));       // Phir Validate
-    cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));      // Phir Performance Check
-    cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));      // Last mein Transaction (SaveChanges)
+    cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+    cfg.AddOpenBehavior(typeof(PerformanceBehavior<,>));
+    cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));
 });
 
-// 2. FluentValidation Scan karo (Saare Validators auto-detect honge)
 builder.Services.AddValidatorsFromAssembly(typeof(ICommand<>).Assembly);
+//builder.Services.AddInfrastructureServices(builder.Configuration);  // Ye line honi chahiye
 
 var app = builder.Build();
 
