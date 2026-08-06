@@ -3,40 +3,64 @@ using Microsoft.EntityFrameworkCore.Storage;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Common;
 
+
 namespace SchoolERP.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IApplicationDbContext
 {
+    private readonly ICurrentTenantService _tenantService;
     private IDbContextTransaction? _currentTransaction;
 
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    // 🔥 CONSTRUCTOR: Tenant service inject karo
+    public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService tenantService)
+        : base(options)
+    {
+        _tenantService = tenantService;
+    }
 
-    // ==========================================================
-    // 🔥 EXPLICIT INTERFACE IMPLEMENTATION (Constraint HATAYA)
-    // Interface mein pehle se constraint hai, yahan nahi likhna
-    // ==========================================================
+    // 🔥 GLOBAL QUERY FILTER: Har query mein TenantId lagao
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
 
-    // 1. Set<T> - Explicitly implement
-    DbSet<TEntity> IApplicationDbContext.Set<TEntity>()   // 👈 CONSTRAINT HATAYA (where TEntity : BaseEntity nahi likhna)
-        => base.Set<TEntity>();
+        // Tenant isolation for all entities that inherit BaseEntity
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+                var property = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
+                var tenantId = System.Linq.Expressions.Expression.Constant(_tenantService.GetTenantId());
+                var equals = System.Linq.Expressions.Expression.Equal(property, tenantId);
+                var lambda = System.Linq.Expressions.Expression.Lambda(equals, parameter);
 
-    // 2. SaveChangesAsync - Override base
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+        }
+    }
+
+    // 🔥 IApplicationDbContext Implementation (Explicit)
+    DbSet<TEntity> IApplicationDbContext.Set<TEntity>() => base.Set<TEntity>();
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // Audit fields auto-update
         var entries = ChangeTracker.Entries<BaseEntity>();
         foreach (var entry in entries)
         {
             if (entry.State == EntityState.Added)
+            {
+                entry.Entity.Id = Guid.NewGuid();
+                entry.Entity.TenantId = _tenantService.GetTenantId(); // 🔥 Auto-set TenantId!
                 entry.Entity.CreatedAt = DateTime.UtcNow;
-
+            }
             if (entry.State == EntityState.Modified)
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
         }
-
         return await base.SaveChangesAsync(cancellationToken);
     }
 
-    // 3. Transaction methods
+    // Transaction methods...
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction != null) return;
@@ -60,10 +84,4 @@ public class AppDbContext : DbContext, IApplicationDbContext
     }
 
     public bool HasActiveTransaction => _currentTransaction != null;
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-        // Multi-tenancy Global Filters later...
-    }
 }
