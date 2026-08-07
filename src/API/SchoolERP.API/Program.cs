@@ -1,67 +1,103 @@
 using Finbuckle.MultiTenant;
+using Finbuckle.MultiTenant.AspNetCore.Extensions;
 using Finbuckle.MultiTenant.Extensions;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using SchoolERP.API.Middleware;
 using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Behaviors;
 using SchoolERP.Application.Common.Interfaces;
-using SchoolERP.Infrastructure.MultiTenancy;   // 👈 Naya namespace
+using SchoolERP.Infrastructure.Data;
+using SchoolERP.Infrastructure.Identity;
+using SchoolERP.Infrastructure.MultiTenancy;
 using SchoolERP.Infrastructure.Persistence;
 using SchoolERP.Infrastructure.Services;
-using SchoolERP.Infrastructure.Data;
-using Microsoft.Extensions.Configuration;
-using Finbuckle.MultiTenant.AspNetCore.Extensions;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ==========================================================
-// 🔥 STEP 1: FINBUCKLE MULTI-TENANCY REGISTRATION (SERVICES)
+// 🔥 1. MULTI-TENANCY (Finbuckle)
 // ==========================================================
 builder.Services.AddMultiTenant<AppTenantInfo>()
-    //.WithHostStrategy() // Subdomain se tenant detect karega (e.g., school1.localhost)
-    //.WithHeaderStrategy() // Ya Header se (X-Tenant-Id)
+    .WithHostStrategy()          // 👈 UNCOMMENTED: school1.localhost se tenant detect
+    .WithHeaderStrategy()        // Ya Header se (X-Tenant-Id)
     .WithInMemoryStore(options =>
     {
-        options.Tenants.Add(new AppTenantInfo
+        options.Tenants = new List<AppTenantInfo>
         {
-            Id = "11111111-1111-1111-1111-111111111111",
-            Identifier = "school1",
-            Name = "ABC High School"
-        });
-        options.Tenants.Add(new AppTenantInfo
-        {
-            Id = "22222222-2222-2222-2222-222222222222",
-            Identifier = "school2",
-            Name = "XYZ Public School"
-        });
-    }); // Phase 1: Static tenants (Baad mein DB store se replace karenge)
+            new AppTenantInfo
+            {
+                Id = "11111111-1111-1111-1111-111111111111",
+                Identifier = "school1",
+                Name = "ABC High School"
+            },
+            new AppTenantInfo
+            {
+                Id = "22222222-2222-2222-2222-222222222222",
+                Identifier = "school2",
+                Name = "XYZ Public School"
+            }
+        };
+    });
 
 // ==========================================================
-// 🔥 STEP 2: REGISTER DEPENDENCIES
+// 🔥 2. IDENTITY (User Store)
 // ==========================================================
-// 1. DbContext (IApplicationDbContext ko AppDbContext se bind karo)
+builder.Services.AddIdentity<ApplicationUser, IdentityRole<long>>(options =>
+{
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 4;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
+// ==========================================================
+// 🔥 3. JWT AUTHENTICATION (Token Read Karne Ke Liye)
+// ==========================================================
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!))
+    };
+});
+
+// ==========================================================
+// 🔥 4. DEPENDENCY INJECTION (Clean Architecture)
+// ==========================================================
+
+// DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
-
 builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-// 2. Current Tenant Service (Finbuckle ke accessor par based)
-builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+// Multi-Tenancy Service (Singleton/Scoped)
+builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>(); // 👈 SINGLE REGISTRATION
 
-// 3. Dapper Factory
-//builder.Services.AddScoped<IDbConnectionFactory, SqlConnectionFactory>();
-// 🔥 DAPPER GENERIC REPOSITORY REGISTRATION (Open Generic)
-// ==========================================================
+// Dapper
+builder.Services.AddScoped<IDbConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped(typeof(IDapperRepository<>), typeof(DapperRepository<>));
 
-// 🔥 Dapper Connection Factory (Already registered, but ensure Scoped)
-builder.Services.AddScoped<IDbConnectionFactory, SqlConnectionFactory>();
-
-// 🔥 Current Tenant Service (Required for Dapper Tenant Injection)
-builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
-
-// 4. MediatR & Behaviors
+// MediatR + Behaviors
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(ICommand<>).Assembly);
@@ -71,37 +107,38 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(TransactionBehavior<,>));
 });
 
-// 5. FluentValidation
+// FluentValidation
 builder.Services.AddValidatorsFromAssembly(typeof(ICommand<>).Assembly);
 
-// 6. Controllers
+// Controllers & Swagger
 builder.Services.AddControllers();
-
-// 7. Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 // ==========================================================
-// 🔥 STEP 3: MIDDLEWARE PIPELINE
+// 🔥 5. MIDDLEWARE PIPELINE (ORDER IS CRITICAL!)
 // ==========================================================
 
 // 1. Global Exception Handler (Sabse Pehle)
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
-// 2. 🔥 FINBUCKLE MULTI-TENANCY (Activate the middleware)
-app.UseMultiTenant(); // Yeh ab kaam karega kyunki services register ho chuki hain
+// 2. Multi-Tenancy (Finbuckle)
+app.UseMultiTenant();
 
-// 3. Swagger
+// 3. Swagger (Development)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// 4. Auth & Routing
-app.UseAuthorization();
+// 4. 🔥 AUTHENTICATION & AUTHORIZATION (YEH MISSING THA)
+app.UseAuthentication(); // 👈 JWT token ko read karega
+app.UseAuthorization();  // 👈 [Authorize] attribute enforce karega
+
+// 5. Routing
 app.MapControllers();
 
 app.Run();
