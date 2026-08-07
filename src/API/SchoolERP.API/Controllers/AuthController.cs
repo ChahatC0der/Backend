@@ -54,20 +54,28 @@ public class AuthController : BaseApiController
         });
     }
 
-    private string GenerateJwtToken(ApplicationUser user)
+    private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
         var claims = new List<Claim>
-        {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email!),
-            new Claim("TenantId", user.TenantId.ToString()),
-            new Claim("PermissionsVersion", user.PermissionsVersion.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
+    {
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.Email, user.Email!),
+        new Claim("TenantId", user.TenantId.ToString()),
+        new Claim("PermissionsVersion", user.PermissionsVersion.ToString()),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
 
-        // 🔥 Phase 5 (RBAC) me permissions yahan add hongi
-        // var permissions = await _userManager.GetClaimsAsync(user); 
-        // claims.AddRange(permissions.Where(c => c.Type == "permission"));
+        // 🔥 PHASE 5: Fetch permissions from DB (For testing, hardcode admin permissions)
+        // Actual implementation: Get from RolePermissions table via Dapper or EF
+        if (user.IsPlatformAdmin || user.Email == "admin@school.com")
+        {
+            claims.Add(new Claim("permission", "tenant.read"));
+            claims.Add(new Claim("permission", "student.read"));
+            claims.Add(new Claim("permission", "student.create"));
+            claims.Add(new Claim("permission", "student.update"));
+            claims.Add(new Claim("permission", "student.delete"));
+            // Add all permissions for admin
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:Secret"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
