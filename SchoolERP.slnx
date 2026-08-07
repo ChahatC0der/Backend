@@ -1,20 +1,20 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/API/">
-    <Project Path="F:/Chahat/src/API/SchoolERP.API/SchoolERP.API.csproj" />
+    <Project Path="src/API/SchoolERP.API/SchoolERP.API.csproj" />
   </Folder>
   <Folder Name="/src/Application/">
-    <Project Path="F:/Chahat/src/Application/SchoolERP.Application/SchoolERP.Application.csproj" />
+    <Project Path="src/Application/SchoolERP.Application/SchoolERP.Application.csproj" />
   </Folder>
   <Folder Name="/src/Domain/">
-    <Project Path="F:/Chahat/src/Domain/SchoolERP.Domain.Shared/SchoolERP.Domain.Shared.csproj" />
-    <Project Path="F:/Chahat/src/Domain/SchoolERP.Domain/SchoolERP.Domain.csproj" />
+    <Project Path="src/Domain/SchoolERP.Domain.Shared/SchoolERP.Domain.Shared.csproj" />
+    <Project Path="src/Domain/SchoolERP.Domain/SchoolERP.Domain.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
-    <Project Path="F:/Chahat/src/Infrastructure/SchoolERP.Infrastructure/SchoolERP.Infrastructure.csproj" />
+    <Project Path="src/Infrastructure/SchoolERP.Infrastructure/SchoolERP.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="F:/Chahat/tests/SchoolERP.IntegrationTests/SchoolERP.IntegrationTests.csproj" />
-    <Project Path="F:/Chahat/tests/SchoolERP.UnitTests/SchoolERP.UnitTests.csproj" />
+    <Project Path="tests/SchoolERP.IntegrationTests/SchoolERP.IntegrationTests.csproj" />
+    <Project Path="tests/SchoolERP.UnitTests/SchoolERP.UnitTests.csproj" />
   </Folder>
 </Solution>
