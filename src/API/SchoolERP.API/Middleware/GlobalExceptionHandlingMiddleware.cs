@@ -8,11 +8,16 @@ public class GlobalExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionHandlingMiddleware> _logger;
+    private readonly IHostEnvironment _env;
 
-    public GlobalExceptionHandlingMiddleware(RequestDelegate next, ILogger<GlobalExceptionHandlingMiddleware> logger)
+    public GlobalExceptionHandlingMiddleware(
+        RequestDelegate next,
+        ILogger<GlobalExceptionHandlingMiddleware> logger,
+        IHostEnvironment env)
     {
         _next = next;
         _logger = logger;
+        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -31,32 +36,28 @@ public class GlobalExceptionHandlingMiddleware
     {
         _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
 
-        // 🔥 Status Code Mapping based on Exception Type
-        var (statusCode, title, detail) = ex switch
+        var (statusCode, message) = ex switch
         {
             ValidationException validationEx =>
-                (HttpStatusCode.BadRequest, "Validation Error", string.Join(" | ", validationEx.Errors.Select(e => e.ErrorMessage))),
+                (HttpStatusCode.BadRequest, string.Join(" | ", validationEx.Errors.Select(e => e.ErrorMessage))),
 
             UnauthorizedAccessException =>
-                (HttpStatusCode.Unauthorized, "Unauthorized", "You are not authenticated."),
+                (HttpStatusCode.Unauthorized, "You are not authenticated."),
 
             KeyNotFoundException =>
-                (HttpStatusCode.NotFound, "Resource Not Found", ex.Message),
+                (HttpStatusCode.NotFound, ex.Message),
 
-            _ => (HttpStatusCode.InternalServerError, "Server Error", "An unexpected error occurred.")
+            _ => (HttpStatusCode.InternalServerError,
+                  _env.IsDevelopment() ? ex.Message : "An unexpected error occurred. Please try again later.")
         };
 
         var response = new
         {
-            type = "https://tools.ietf.org/html/rfc7807",
-            title = title,
-            status = (int)statusCode,
-            detail = detail,
-            instance = context.Request.Path,
-            traceId = context.TraceIdentifier
+            success = false,
+            error = message
         };
 
-        context.Response.ContentType = "application/problem+json";
+        context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)statusCode;
 
         return context.Response.WriteAsync(JsonSerializer.Serialize(response));

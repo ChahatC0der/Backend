@@ -70,6 +70,7 @@ public class AuthController : BaseApiController
         if (user.IsPlatformAdmin || user.Email == "admin@school.com")
         {
             claims.Add(new Claim("permission", "tenant.read"));
+            claims.Add(new Claim("permission", "tenant.create"));
             claims.Add(new Claim("permission", "student.read"));
             claims.Add(new Claim("permission", "student.create"));
             claims.Add(new Claim("permission", "student.update"));

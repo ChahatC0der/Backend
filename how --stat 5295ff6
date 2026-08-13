@@ -1,0 +1,8 @@
+[33mcommit 5295ff6965073caca6120afd30075ba1e72e6dd5[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: ChahatC0der <125646503+ChahatC0der@users.noreply.github.com>
+Date:   Fri Aug 7 21:48:18 2026 +0530
+
+    Update project paths to relative references
+
+ SchoolERP.slnx | 14 [32m+++++++[m[31m-------[m
+ 1 file changed, 7 insertions(+), 7 deletions(-)

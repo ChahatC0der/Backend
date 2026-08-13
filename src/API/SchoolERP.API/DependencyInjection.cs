@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -72,7 +73,26 @@ public static class DependencyInjection
         // ==========================================================
         // 🔥 5. CONTROLLERS
         // ==========================================================
-        services.AddControllers();
+        services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(x => x.Value?.Errors.Count > 0)
+                .SelectMany(x => x.Value!.Errors)
+                .Select(x => x.ErrorMessage)
+                .ToList();
+
+            var response = new
+            {
+                success = false,
+                error = string.Join(" | ", errors)
+            };
+
+            return new BadRequestObjectResult(response);
+        };
+    });
 
         // ==========================================================
         // 🔥 6. API DOCUMENTATION (Swagger + Scalar)

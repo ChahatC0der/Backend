@@ -5,7 +5,7 @@ namespace SchoolERP.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
-    DbSet<TEntity> Set<TEntity>() where TEntity : BaseEntity;
+    DbSet<TEntity> Set<TEntity>() where TEntity : class;
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     Task CommitTransactionAsync(CancellationToken cancellationToken = default);

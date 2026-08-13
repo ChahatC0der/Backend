@@ -15,17 +15,17 @@ public class PermissionPolicyProvider : IAuthorizationPolicyProvider
 
     public Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
-        // 🔥 Agar policy name "Permission_" se start hoti hai toh custom policy banao
+        // 🔥 Check if policyName starts with "Permission_"
         if (policyName.StartsWith(PolicyPrefix, StringComparison.OrdinalIgnoreCase))
         {
             var permission = policyName.Substring(PolicyPrefix.Length);
             var policy = new AuthorizationPolicyBuilder()
                 .AddRequirements(new PermissionRequirement(permission))
                 .Build();
-
             return Task.FromResult<AuthorizationPolicy?>(policy);
         }
 
+        // Fallback to default provider for other policies
         return _fallbackProvider.GetPolicyAsync(policyName);
     }
 

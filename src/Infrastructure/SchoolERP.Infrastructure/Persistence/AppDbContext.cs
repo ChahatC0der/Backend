@@ -2,8 +2,10 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using OpenTelemetry;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Common;
+using SchoolERP.Domain.Tenants.Entities;
 using SchoolERP.Infrastructure.Identity;
 
 namespace SchoolERP.Infrastructure.Persistence;
@@ -13,39 +15,29 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
     private readonly ICurrentTenantService _tenantService;
     private IDbContextTransaction? _currentTransaction;
 
+    private Guid CurrentTenantId => _tenantService.GetTenantId();
+    //private Guid CurrentBranchId => _tenantService.GetBranchId();
+
     public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService tenantService)
         : base(options)
     {
         _tenantService = tenantService;
     }
 
-    // 🔥 IApplicationDbContext Implementation
+    // 🔥 Business tables
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+    //public DbSet<Branch> Branches => Set<Branch>();
+
     DbSet<TEntity> IApplicationDbContext.Set<TEntity>() => base.Set<TEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // 🔥 CRITICAL: Identity tables configure karne ke liye base call karo
         base.OnModelCreating(modelBuilder);
 
-        // ==========================================================
-        // 🔥 MAP EXISTING DDL TABLES TO IDENTITY
-        // ==========================================================
-
-        // 1. Users Table (Custom ApplicationUser)
+        // ---- Identity Mapping (jaisa pehle tha) ----
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.ToTable("Users");
-            entity.HasKey(e => e.Id);
-
-            // Identity base columns (yeh DDL mein honge ya migration add karega)
-            entity.Property(e => e.Id).HasColumnName("Id");
-            entity.Property(e => e.Email).HasColumnName("Email");
-            entity.Property(e => e.PasswordHash).HasColumnName("PasswordHash");
-            entity.Property(e => e.NormalizedEmail).HasColumnName("NormalizedEmail");
-            entity.Property(e => e.ConcurrencyStamp).HasColumnName("ConcurrencyStamp");
-            entity.Property(e => e.SecurityStamp).HasColumnName("SecurityStamp");
-
-            // Custom columns (jo DDL mein already hain)
             entity.Property(e => e.TenantId).HasColumnName("TenantId");
             entity.Property(e => e.BranchId).HasColumnName("BranchId");
             entity.Property(e => e.Name).HasColumnName("Name");
@@ -57,79 +49,99 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
             entity.Property(e => e.DeletedAt).HasColumnName("DeletedAt");
         });
 
-        // 2. Roles Table (IdentityRole)
-        modelBuilder.Entity<IdentityRole<long>>(entity =>
-        {
-            entity.ToTable("Roles");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("Id");
-            entity.Property(e => e.Name).HasColumnName("Name");
-            entity.Property(e => e.NormalizedName).HasColumnName("NormalizedName");
-        });
-
-        // 3. UserRoles Table (Many-to-Many)
-        modelBuilder.Entity<IdentityUserRole<long>>(entity =>
-        {
-            entity.ToTable("UserRoles");
-            entity.HasKey(e => new { e.UserId, e.RoleId });
-            entity.Property(e => e.UserId).HasColumnName("UserId");
-            entity.Property(e => e.RoleId).HasColumnName("RoleId");
-        });
-
-        // 4. RolePermissions (IdentityRoleClaim) — Phase 5 mein permissions yahan store hongi
+        modelBuilder.Entity<IdentityRole<long>>(entity => entity.ToTable("Roles"));
+        modelBuilder.Entity<IdentityUserRole<long>>(entity => entity.ToTable("UserRoles"));
         modelBuilder.Entity<IdentityRoleClaim<long>>(entity =>
         {
             entity.ToTable("RolePermissions");
-            entity.HasKey(e => e.Id);
             entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
-            entity.Property(e => e.ClaimValue).HasColumnName("ClaimValue");
         });
-
-        // 5. UserPermissions (IdentityUserClaim) — Extra granular permissions
         modelBuilder.Entity<IdentityUserClaim<long>>(entity =>
         {
             entity.ToTable("UserPermissions");
-            entity.HasKey(e => e.Id);
             entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
-            entity.Property(e => e.ClaimValue).HasColumnName("ClaimValue");
         });
 
-        // ==========================================================
-        // 🔥 MULTI-TENANCY: Global Query Filters
-        // ==========================================================
+        // ---- Tenant / Branch Table Config ----
+        modelBuilder.Entity<Tenant>(entity =>
+        {
+            entity.ToTable("Tenants");
+            entity.HasIndex(e => e.Subdomain).IsUnique();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(100);
+        });
+
+        //modelBuilder.Entity<Branch>(entity =>
+        //{
+        //    entity.ToTable("Branches");
+        //    entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+        //    entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+        //    entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
+        //});
+
+        // ---- Global Query Filters (Tenant / Branch Isolation) ----
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            var clrType = entityType.ClrType;
+
+            if (typeof(IMustHaveBranch).IsAssignableFrom(clrType))
             {
-                var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
-                var property = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
-                var tenantId = System.Linq.Expressions.Expression.Constant(_tenantService.GetTenantId());
-                var equals = System.Linq.Expressions.Expression.Equal(property, tenantId);
-                var lambda = System.Linq.Expressions.Expression.Lambda(equals, parameter);
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                var parameter = System.Linq.Expressions.Expression.Parameter(clrType, "e");
+
+                var tenantProp = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
+                var currentTenantExpr = System.Linq.Expressions.Expression.Property(
+                    System.Linq.Expressions.Expression.Constant(this), nameof(CurrentTenantId));
+                var tenantEquals = System.Linq.Expressions.Expression.Equal(tenantProp, currentTenantExpr);
+
+                //var branchProp = System.Linq.Expressions.Expression.Property(parameter, "BranchId");
+                //var currentBranchExpr = System.Linq.Expressions.Expression.Property(
+                //    System.Linq.Expressions.Expression.Constant(this), nameof(CurrentBranchId));
+                //var branchEquals = System.Linq.Expressions.Expression.Equal(branchProp, currentBranchExpr);
+
+               // var combined = System.Linq.Expressions.Expression.AndAlso(tenantEquals, branchEquals);
+                modelBuilder.Entity(clrType).HasQueryFilter(
+                    System.Linq.Expressions.Expression.Lambda(tenantEquals, parameter));
             }
+            else if (typeof(IMustHaveTenant).IsAssignableFrom(clrType))
+            {
+                var parameter = System.Linq.Expressions.Expression.Parameter(clrType, "e");
+                var tenantProp = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
+                var currentTenantExpr = System.Linq.Expressions.Expression.Property(
+                    System.Linq.Expressions.Expression.Constant(this), nameof(CurrentTenantId));
+                var equals = System.Linq.Expressions.Expression.Equal(tenantProp, currentTenantExpr);
+                modelBuilder.Entity(clrType).HasQueryFilter(
+                    System.Linq.Expressions.Expression.Lambda(equals, parameter));
+            }
+            // Tenant, Branch, AdminUserTenant → koi filter nahi (IMustHaveTenant implement hi nahi karte)
         }
     }
 
-    // 🔥 SaveChanges Override (Auto TenantId + Audit)
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var entries = ChangeTracker.Entries<BaseEntity>();
-        foreach (var entry in entries)
+        foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
         {
             if (entry.State == EntityState.Added)
-            {
-                entry.Entity.Id = Guid.NewGuid();
-                entry.Entity.TenantId = _tenantService.GetTenantId();
+                entry.Entity.TenantId = CurrentTenantId;
+        }
+
+        //foreach (var entry in ChangeTracker.Entries<IMustHaveBranch>())
+        //{
+        //    if (entry.State == EntityState.Added)
+        //        entry.Entity.BranchId = CurrentBranchId;
+        //}
+
+        // 🔥 Ab dono hierarchies (long-based aur Guid-based) ke liye kaam karega
+        foreach (var entry in ChangeTracker.Entries<IAuditableTimestamps>())
+        {
+            if (entry.State == EntityState.Added)
                 entry.Entity.CreatedAt = DateTime.UtcNow;
-            }
             if (entry.State == EntityState.Modified)
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
         }
+
         return await base.SaveChangesAsync(cancellationToken);
     }
 
-    // 🔥 Transaction Methods (IApplicationDbContext)
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction != null) return;
