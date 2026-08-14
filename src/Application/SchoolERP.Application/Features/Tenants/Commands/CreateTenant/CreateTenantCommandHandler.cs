@@ -28,6 +28,17 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, R
             return (Result<TenantResponse>)Result<TenantResponse>.Failure(
                 Error.Conflict($"Subdomain '{subdomain}' is already taken."));
 
+        // 1️⃣ Generate subdomain
+        var email = request.Request.ContactEmail;
+
+        // 2️⃣ Check uniqueness (soft-deleted tenants should also be blocked for reuse)
+        var emailexists = await _dbContext.Set<Tenant>()
+            .AnyAsync(t => t.ContactEmail == email && !t.IsDeleted, cancellationToken);
+
+        if (emailexists)
+            return (Result<TenantResponse>)Result<TenantResponse>.Failure(
+                Error.Conflict($"Email '{email}' is already taken."));
+
         // 3️⃣ Create tenant entity
         var tenant = new Tenant
         {
