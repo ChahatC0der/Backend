@@ -6,6 +6,11 @@ public class CreateTenantValidator : AbstractValidator<CreateTenantCommand>
 {
     public CreateTenantValidator()
     {
+        RuleFor(x => x.Request.Code)
+            .NotEmpty().WithMessage("Tenant code is required.")
+            .MaximumLength(20).WithMessage("Code must not exceed 20 characters.")
+            .Matches("^[A-Z0-9]+$").WithMessage("Code must be uppercase alphanumeric (e.g., DAV, NPS-01).");
+
         RuleFor(x => x.Request.Name)
             .NotEmpty().WithMessage("Tenant name is required.")
             .MaximumLength(255);

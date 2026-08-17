@@ -17,32 +17,36 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, R
 
     public async Task<Result<TenantResponse>> Handle(CreateTenantCommand request, CancellationToken cancellationToken)
     {
-        // 1️⃣ Generate subdomain
-        var subdomain = request.Request.Name.ToLower().Replace(" ", "-");
+        var subdomain = request.Request.Subdomain.ToLower().Replace(" ", "-");
 
-        // 2️⃣ Check uniqueness (soft-deleted tenants should also be blocked for reuse)
-        var exists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.Subdomain == subdomain && !t.IsDeleted, cancellationToken);
+        // 🔥 1. Code Uniqueness Check
+        var codeExists = await _dbContext.Set<Tenant>()
+            .AnyAsync(t => t.Code == request.Request.Code && !t.IsDeleted, cancellationToken);
+        if (codeExists)
+            return Error.Conflict($"Code '{request.Request.Code}' is already taken.");
 
-        if (exists)
-            return (Result<TenantResponse>)Result<TenantResponse>.Failure(
-                Error.Conflict($"Subdomain '{subdomain}' is already taken."));
+        var nameExists = await _dbContext.Set<Tenant>()
+            .AnyAsync(t => t.Name == request.Request.Name && !t.IsDeleted, cancellationToken);
+        if (nameExists)
+            return Error.Conflict($"Code '{request.Request.Name}' is already taken.");
 
-        // 1️⃣ Generate subdomain
-        var email = request.Request.ContactEmail;
+        // 🔥 2. Subdomain Uniqueness Check
+        var subdomainExists = await _dbContext.Set<Tenant>()
+            .AnyAsync(t => t.Subdomain.ToLower() == subdomain && !t.IsDeleted, cancellationToken);
+        if (subdomainExists)
+            return Error.Conflict($"Subdomain '{subdomain}' is already taken.");
 
-        // 2️⃣ Check uniqueness (soft-deleted tenants should also be blocked for reuse)
-        var emailexists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.ContactEmail == email && !t.IsDeleted, cancellationToken);
+        // 🔥 3. Email Uniqueness Check
+        var emailExists = await _dbContext.Set<Tenant>()
+            .AnyAsync(t => t.ContactEmail.ToLower() == request.Request.ContactEmail.ToLower() && !t.IsDeleted, cancellationToken);
+        if (emailExists)
+            return Error.Conflict($"Email '{request.Request.ContactEmail}' is already registered.");
 
-        if (emailexists)
-            return (Result<TenantResponse>)Result<TenantResponse>.Failure(
-                Error.Conflict($"Email '{email}' is already taken."));
-
-        // 3️⃣ Create tenant entity
+        // 🔥 4. Create Tenant
         var tenant = new Tenant
         {
             Id = Guid.NewGuid(),
+            Code = request.Request.Code,    // 👈 USER KA CODE
             Name = request.Request.Name,
             Subdomain = subdomain,
             ContactEmail = request.Request.ContactEmail,
@@ -51,16 +55,12 @@ public class CreateTenantCommandHandler : IRequestHandler<CreateTenantCommand, R
             Plan = request.Request.Plan,
             Status = "active",
             Settings = "{}",
-            CustomFieldsDef = "{}",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CustomFieldsDef = "{}"
         };
 
-        // 4️⃣ Save
         await _dbContext.Set<Tenant>().AddAsync(tenant, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        // 5️⃣ Return response
         return Result.Success(tenant.Adapt<TenantResponse>(), "Tenant created successfully.");
     }
 }
