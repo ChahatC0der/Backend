@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SchoolERP.Application.Common.DTOs;
 using SchoolERP.Application.Features.Tenants.Commands.BulkDelete;
+using SchoolERP.Application.Features.Tenants.Commands.BulkUpdate;
 using SchoolERP.Application.Features.Tenants.Commands.CreateTenant;
 using SchoolERP.Application.Features.Tenants.Commands.DeleteTenant;
 using SchoolERP.Application.Features.Tenants.Commands.PatchTenant;
@@ -48,6 +49,12 @@ public class TenantsController : BaseApiController
     [AllowAnonymous]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTenantRequest request)
         => HandleResult(await Mediator.Send(new UpdateTenantCommand(id, request)));
+
+    // 📌 BULK UPDATE
+    [HttpPut("bulk")]
+    [AllowAnonymous] // TODO: [HasPermission("tenant.bulk.update")]
+    public async Task<IActionResult> BulkUpdate([FromBody] BulkUpdateTenantRequest request)
+        => HandleResult(await Mediator.Send(new BulkUpdateTenantCommand(request)));
 
     // 📌 PATCH (PARTIAL)
     [HttpPatch("{id:guid}")]

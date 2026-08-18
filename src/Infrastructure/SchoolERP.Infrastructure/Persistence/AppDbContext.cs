@@ -71,6 +71,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
             entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(100);
         });
 
+        modelBuilder.Entity<Branch>(entity =>
+        {
+            entity.ToTable("Branches");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasDefaultValueSql("NEWID()");
+            entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.IsDefault }).IsUnique().HasFilter("IsDefault = 1");
+
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany() // or .WithMany(t => t.Branches) if you add navigation in Tenant
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         //modelBuilder.Entity<Branch>(entity =>
         //{
         //    entity.ToTable("Branches");

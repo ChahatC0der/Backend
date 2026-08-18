@@ -23,6 +23,19 @@ public record UpdateTenantRequest(
     string Status = "active"
 );
 
+// 🔥 BULK UPDATE REQUEST
+public record BulkUpdateTenantRequest(
+    List<Guid> Ids,
+    string? Code = null,
+    string? Name = null,
+    string? Subdomain = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null,
+    string? Address = null,
+    string? Plan = null,
+    string? Status = null
+);
+
 // 🔥 PATCH (Partial Update — Sirf jo bheja jaye woh update ho)
 public record PatchTenantRequest(
     string? Code = null,
