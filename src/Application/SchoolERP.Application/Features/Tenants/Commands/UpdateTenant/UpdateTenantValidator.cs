@@ -21,9 +21,9 @@ public class UpdateTenantValidator : AbstractValidator<UpdateTenantCommand>
             .NotEmpty().EmailAddress();
 
         RuleFor(x => x.Request.Plan)
-            .Must(p => new[] { "free", "basic", "pro", "enterprise" }.Contains(p));
+            .Must(p => new[] { "free", "basic", "pro", "enterprise" }.Contains(p)).WithMessage("Plan must be one of: free, basic, pro, enterprise.");
 
         RuleFor(x => x.Request.Status)
-            .Must(s => new[] { "active", "suspended", "trial", "expired" }.Contains(s));
+            .Must(s => new[] { "active", "suspended", "trial", "expired" }.Contains(s)).WithMessage("Status must be one of: active,suspended,trial,expired.");
     }
 }

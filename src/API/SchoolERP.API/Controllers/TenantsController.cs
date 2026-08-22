@@ -45,7 +45,7 @@ public class TenantsController : BaseApiController
         => HandleResult(await Mediator.Send(new GetTenantByIdQuery(id)));
 
     // 📌 UPDATE (FULL)
-    [HttpPut("{id:guid}")]
+    [HttpPut("{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTenantRequest request)
         => HandleResult(await Mediator.Send(new UpdateTenantCommand(id, request)));
@@ -57,7 +57,7 @@ public class TenantsController : BaseApiController
         => HandleResult(await Mediator.Send(new BulkUpdateTenantCommand(request)));
 
     // 📌 PATCH (PARTIAL)
-    [HttpPatch("{id:guid}")]
+    [HttpPatch("{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> Patch(Guid id, [FromBody] PatchTenantRequest request)
         => HandleResult(await Mediator.Send(new PatchTenantCommand(id, request)));

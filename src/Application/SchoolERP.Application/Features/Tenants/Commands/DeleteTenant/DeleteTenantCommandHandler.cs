@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Extensions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Shared.Results;
 using SchoolERP.Domain.Tenants.Entities;
@@ -15,18 +16,23 @@ public class DeleteTenantCommandHandler : IRequestHandler<DeleteTenantCommand, R
 
     public async Task<Result<bool>> Handle(DeleteTenantCommand request, CancellationToken cancellationToken)
     {
-        var tenant = await _dbContext.Set<Tenant>()
-            .FirstOrDefaultAsync(t => t.Id == request.Id && !t.IsDeleted, cancellationToken);
+        // 1️⃣ FETCH TENANT (Helper)
+        var tenantResult = await _dbContext.GetEntityByIdAsync<Tenant>(request.Id, cancellationToken);
+        if (tenantResult.IsFailure)
+            return tenantResult.Error;
 
-        if (tenant == null)
-            return Error.NotFound("Tenant", request.Id.ToString());
+        var tenant = tenantResult.Value;
 
+        // 2️⃣ SOFT DELETE
         tenant.IsDeleted = true;
         tenant.DeletedAt = DateTime.UtcNow;
-        tenant.UpdatedAt = DateTime.UtcNow;
 
+        // 🔥 UpdatedAt auto-set by SaveChangesAsync override (no need to manually set)
+
+        // 3️⃣ SAVE
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        // 4️⃣ RETURN
         return Result.Success(true, $"Tenant '{tenant.Name}' deleted successfully.");
     }
 }

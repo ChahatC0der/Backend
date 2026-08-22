@@ -4,6 +4,14 @@ namespace SchoolERP.Domain.Tenants.Entities;
 
 public class Tenant : GuidAuditableEntity
 {
+    public Tenant()
+    {
+        //Id = Guid.NewGuid();
+        Status = "active";
+        Settings = "{}";
+        CustomFieldsDef = "{}";
+    }
+
     // 🔥 1. Identity & Branding
     public string Code { get; set; } = string.Empty; // Unique, used in Invoice prefix
     public string Name { get; set; } = string.Empty;

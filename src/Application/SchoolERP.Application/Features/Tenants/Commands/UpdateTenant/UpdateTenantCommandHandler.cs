@@ -1,10 +1,13 @@
 ﻿using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using SchoolERP.Application.Common.Extensions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Tenants.DTOs;
 using SchoolERP.Domain.Shared.Results;
 using SchoolERP.Domain.Tenants.Entities;
+using System.Linq.Expressions;
 
 namespace SchoolERP.Application.Features.Tenants.Commands.UpdateTenant;
 
@@ -17,48 +20,48 @@ public class UpdateTenantCommandHandler : IRequestHandler<UpdateTenantCommand, R
 
     public async Task<Result<TenantResponse>> Handle(UpdateTenantCommand request, CancellationToken cancellationToken)
     {
-        // 1️⃣ Fetch existing tenant
-        var tenant = await _dbContext.Set<Tenant>()
-            .FirstOrDefaultAsync(t => t.Id == request.Id && !t.IsDeleted, cancellationToken);
+        // 1️⃣ 🔥 FETCH TENANT USING HELPER (No manual null check)
+        var tenantResult = await _dbContext.GetEntityByIdAsync<Tenant>(request.Id, cancellationToken);
+        Console.WriteLine(tenantResult);
+        if (tenantResult.IsFailure)
+            return tenantResult.Error;
 
-        if (tenant == null)
-            return Error.NotFound("Tenant", request.Id.ToString());
+        var tenant = tenantResult.Value;
 
-        // 🔥 2️⃣ Uniqueness Checks (EXCLUDE current tenant)
-        var codeExists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.Code == request.Request.Code && t.Id != request.Id && !t.IsDeleted, cancellationToken);
-        if (codeExists)
-            return Error.Conflict($"Code '{request.Request.Code}' is already taken by another tenant.");
-
-        var nameExists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.Name == request.Request.Name && t.Id != request.Id && !t.IsDeleted, cancellationToken);
-        if (nameExists)
-            return Error.Conflict($"Name '{request.Request.Name}' is already taken by another tenant.");
-
+        // 2️⃣ PREPARE CLEAN VALUES
         var cleanSubdomain = request.Request.Subdomain.Trim().ToLower().Replace(" ", "-");
-        var subdomainExists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.Subdomain == cleanSubdomain && t.Id != request.Id && !t.IsDeleted, cancellationToken);
-        if (subdomainExists)
-            return Error.Conflict($"Subdomain '{cleanSubdomain}' is already taken by another tenant.");
+        var code = request.Request.Code.Trim().ToUpper();
+        var email = request.Request.ContactEmail.Trim().ToLower();
 
-        var emailExists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.ContactEmail.ToLower() == request.Request.ContactEmail.ToLower() && t.Id != request.Id && !t.IsDeleted, cancellationToken);
-        if (emailExists)
-            return Error.Conflict($"Email '{request.Request.ContactEmail}' is already registered by another tenant.");
+        // 3️⃣ 🔥 UNIQUENESS CHECKS (EXCLUDE CURRENT TENANT)
+        var checks = new (Expression<Func<Tenant, bool>> Predicate, string Message)[]
+        {
+            (t => t.Code == code && t.Id != request.Id && !t.IsDeleted,
+                $"Code '{code}' is already taken by another tenant."),
 
-        // 3️⃣ Update fields
-        tenant.Code = request.Request.Code;
-        tenant.Name = request.Request.Name;
+            (t => t.Name == request.Request.Name && t.Id != request.Id && !t.IsDeleted,
+                $"Name '{request.Request.Name}' is already taken by another tenant."),
+
+            (t => t.Subdomain == cleanSubdomain && t.Id != request.Id && !t.IsDeleted,
+                $"Subdomain '{cleanSubdomain}' is already taken by another tenant."),
+
+            (t => t.ContactEmail == email && t.Id != request.Id && !t.IsDeleted,
+                $"Email '{email}' is already registered by another tenant.")
+        };
+
+        var error = await _dbContext.EnsureAllUniqueAsync(checks, cancellationToken);
+        if (error is not null)
+            return error;
+
+        // 4️⃣ 🔥 UPDATE USING MAPSTER (EXISTING OBJECT)
+        request.Request.Adapt(tenant);
         tenant.Subdomain = cleanSubdomain;
-        tenant.ContactEmail = request.Request.ContactEmail;
-        tenant.ContactPhone = request.Request.ContactPhone;
-        tenant.Address = request.Request.Address;
-        tenant.Plan = request.Request.Plan;
-        tenant.Status = request.Request.Status;
-        tenant.UpdatedAt = DateTime.UtcNow;
 
+        // 5️⃣ SAVE (UpdatedAt auto-set in SaveChangesAsync)
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+
+        // 6️⃣ RETURN RESPONSE
         return Result.Success(tenant.Adapt<TenantResponse>(), "Tenant updated successfully.");
     }
 }

@@ -6,6 +6,7 @@ using SchoolERP.API;
 using SchoolERP.API.Middleware;
 using SchoolERP.Application;
 using SchoolERP.Infrastructure;
+using SchoolERP.Infrastructure.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,6 +26,9 @@ builder.Services
     .AddApplication()        // MediatR + FluentValidation
     .AddInfrastructure(builder.Configuration) // EF, Identity, Dapper, MultiTenant, Cache
     .AddApi(builder.Configuration);          // JWT, RBAC, OpenTelemetry, HealthChecks, Swagger
+
+// 🔥 3. 🔥🔥 YAHAN ADD KARO 🔥🔥
+builder.Services.AddHostedService<DatabaseHealthCheckService>(); // 👈 YE LINE
 
 var app = builder.Build();
 

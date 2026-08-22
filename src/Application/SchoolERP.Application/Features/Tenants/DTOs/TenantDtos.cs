@@ -58,7 +58,8 @@ public record TenantResponse(
     string Plan,
     string Status,
     int StudentCount,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
 );
 
 // 🔥 LIGHTWEIGHT RESPONSE (Dropdowns ke liye)

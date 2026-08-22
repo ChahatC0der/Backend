@@ -62,7 +62,7 @@ namespace SchoolERP.Domain.Shared.Results
     {
         public static readonly Error None = new(string.Empty, string.Empty);
         public static Error NotFound(string entity, string id)
-            => new($"{entity}.NotFound", $"{entity} with id '{id}' was not found.");
+            => new($"NotFound", $"{entity} with id '{id}' was not found.");
         public static Error Conflict(string message)
             => new("Conflict", message);
         public static Error Validation(string message)

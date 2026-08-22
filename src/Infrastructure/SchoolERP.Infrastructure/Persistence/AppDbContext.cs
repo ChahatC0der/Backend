@@ -2,11 +2,11 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using OpenTelemetry;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Common;
 using SchoolERP.Domain.Tenants.Entities;
 using SchoolERP.Infrastructure.Identity;
+using SchoolERP.Infrastructure.Persistence.Configurations; // 👈 NAYA NAMESPACE
 
 namespace SchoolERP.Infrastructure.Persistence;
 
@@ -16,7 +16,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
     private IDbContextTransaction? _currentTransaction;
 
     private Guid CurrentTenantId => _tenantService.GetTenantId();
-    //private Guid CurrentBranchId => _tenantService.GetBranchId();
 
     public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService tenantService)
         : base(options)
@@ -26,7 +25,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
 
     // 🔥 Business tables
     public DbSet<Tenant> Tenants => Set<Tenant>();
-    //public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<Branch> Branches => Set<Branch>(); // 👈 Uncomment karo
 
     DbSet<TEntity> IApplicationDbContext.Set<TEntity>() => base.Set<TEntity>();
 
@@ -34,7 +33,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
     {
         base.OnModelCreating(modelBuilder);
 
-        // ---- Identity Mapping (jaisa pehle tha) ----
+        // ---- Identity Mapping (Pehle jaisa) ----
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.ToTable("Users");
@@ -62,40 +61,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
             entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
         });
 
-        // ---- Tenant / Branch Table Config ----
-        modelBuilder.Entity<Tenant>(entity =>
-        {
-            entity.ToTable("Tenants");
-            entity.HasIndex(e => e.Subdomain).IsUnique();
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(100);
-        });
-
-        modelBuilder.Entity<Branch>(entity =>
-        {
-            entity.ToTable("Branches");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasDefaultValueSql("NEWID()");
-            entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
-            entity.HasIndex(e => new { e.TenantId, e.IsDefault }).IsUnique().HasFilter("IsDefault = 1");
-
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-
-            entity.HasOne(e => e.Tenant)
-                .WithMany() // or .WithMany(t => t.Branches) if you add navigation in Tenant
-                .HasForeignKey(e => e.TenantId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        //modelBuilder.Entity<Branch>(entity =>
-        //{
-        //    entity.ToTable("Branches");
-        //    entity.HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
-        //    entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
-        //    entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
-        //});
+        // ---- 🔥 ALL ENTITY CONFIGURATIONS LOADED FROM SEPARATE FILES ----
+        // Ab Tenant, Branch, MasterCategory, MasterItem etc. ki alag configuration files se apply hongi.
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         // ---- Global Query Filters (Tenant / Branch Isolation) ----
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
@@ -111,12 +79,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
                     System.Linq.Expressions.Expression.Constant(this), nameof(CurrentTenantId));
                 var tenantEquals = System.Linq.Expressions.Expression.Equal(tenantProp, currentTenantExpr);
 
-                //var branchProp = System.Linq.Expressions.Expression.Property(parameter, "BranchId");
-                //var currentBranchExpr = System.Linq.Expressions.Expression.Property(
-                //    System.Linq.Expressions.Expression.Constant(this), nameof(CurrentBranchId));
-                //var branchEquals = System.Linq.Expressions.Expression.Equal(branchProp, currentBranchExpr);
-
-               // var combined = System.Linq.Expressions.Expression.AndAlso(tenantEquals, branchEquals);
                 modelBuilder.Entity(clrType).HasQueryFilter(
                     System.Linq.Expressions.Expression.Lambda(tenantEquals, parameter));
             }
@@ -136,35 +98,37 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        // 🔥 Auto-set TenantId
         foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
         {
             if (entry.State == EntityState.Added)
                 entry.Entity.TenantId = CurrentTenantId;
         }
 
-        //foreach (var entry in ChangeTracker.Entries<IMustHaveBranch>())
-        //{
-        //    if (entry.State == EntityState.Added)
-        //        entry.Entity.BranchId = CurrentBranchId;
-        //}
-
-        // 🔥 Ab dono hierarchies (long-based aur Guid-based) ke liye kaam karega
+        // 🔥 Auto-set CreatedAt & UpdatedAt
         foreach (var entry in ChangeTracker.Entries<IAuditableTimestamps>())
         {
             if (entry.State == EntityState.Added)
+            {
                 entry.Entity.CreatedAt = DateTime.UtcNow;
-            if (entry.State == EntityState.Modified)
-                entry.Entity.UpdatedAt = DateTime.UtcNow;
+                entry.Entity.UpdatedAt = DateTime.UtcNow; // ✅ CREATE par bhi set
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = DateTime.UtcNow; // ✅ UPDATE par set
+            }
         }
 
         return await base.SaveChangesAsync(cancellationToken);
     }
 
+    // ---- Transaction Methods ----
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction != null) return;
         _currentTransaction = await Database.BeginTransactionAsync(cancellationToken);
     }
+
     public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction == null) return;
@@ -172,6 +136,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         await _currentTransaction.DisposeAsync();
         _currentTransaction = null;
     }
+
     public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction == null) return;
@@ -179,5 +144,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         await _currentTransaction.DisposeAsync();
         _currentTransaction = null;
     }
+
     public bool HasActiveTransaction => _currentTransaction != null;
 }
