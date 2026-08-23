@@ -1,6 +1,6 @@
-﻿using Mapster;
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Extensions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Tenants.DTOs;
 using SchoolERP.Domain.Shared.Results;
@@ -17,12 +17,27 @@ public class GetTenantByIdQueryHandler : IRequestHandler<GetTenantByIdQuery, Res
 
     public async Task<Result<TenantResponse>> Handle(GetTenantByIdQuery request, CancellationToken cancellationToken)
     {
-        var tenant = await _dbContext.Set<Tenant>()
-            .FirstOrDefaultAsync(t => t.Id == request.Id && !t.IsDeleted, cancellationToken);
+        // 1️⃣ FETCH TENANT USING HELPER
+        var tenantResult = await _dbContext.GetEntityByIdAsync<Tenant>(request.Id, cancellationToken);
+        if (tenantResult.IsFailure)
+            return tenantResult.Error;
 
-        if (tenant == null)
-            return Error.NotFound("Tenant", request.Id.ToString());
+        var tenant = tenantResult.Value;
 
-        return Result.Success(tenant.Adapt<TenantResponse>());
+        // 2️⃣ 🔥 MANUAL MAPPING (AVOID MAPSTER ISSUES)
+        var response = new TenantResponse(
+            tenant.Id,
+            tenant.Code,
+            tenant.Name,
+            tenant.Subdomain,
+            tenant.ContactEmail,
+            tenant.Plan,
+            tenant.Status,
+            tenant.StudentCount,
+            tenant.CreatedAt,
+            tenant.UpdatedAt
+        );
+
+        return Result.Success(response);
     }
 }
