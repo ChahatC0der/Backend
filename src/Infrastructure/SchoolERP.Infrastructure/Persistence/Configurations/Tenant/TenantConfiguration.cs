@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SchoolERP.Domain.Tenants.Entities;
+using SchoolERP.Infrastructure.Persistence.Configurations.Common;
 
 namespace SchoolERP.Infrastructure.Persistence.Configurations;
 

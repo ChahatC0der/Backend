@@ -1,5 +1,4 @@
-﻿using System.Text;
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Shared.Results;
@@ -10,24 +9,35 @@ namespace SchoolERP.Application.Features.Branches.Queries.ExportBranches;
 public class ExportBranchesQueryHandler : IRequestHandler<ExportBranchesQuery, Result<byte[]>>
 {
     private readonly IApplicationDbContext _dbContext;
+    private readonly IExcelExportService _excelExportService; // 👈 INJECTED
 
-    public ExportBranchesQueryHandler(IApplicationDbContext dbContext) => _dbContext = dbContext;
+    public ExportBranchesQueryHandler(
+        IApplicationDbContext dbContext,
+        IExcelExportService excelExportService)
+    {
+        _dbContext = dbContext;
+        _excelExportService = excelExportService;
+    }
 
     public async Task<Result<byte[]>> Handle(ExportBranchesQuery request, CancellationToken cancellationToken)
     {
+        // 1️⃣ FETCH DATA (WITH UPDATEDAT)
         var branches = await _dbContext.Set<Branch>()
             .Where(b => b.TenantId == request.TenantId && !b.IsDeleted)
             .OrderBy(b => b.Name)
+            .Select(b => new
+            {
+                b.Code,
+                b.Name,
+                b.Status,
+                b.CreatedAt,
+                b.UpdatedAt   // 👈 NAYA FIELD
+            })
             .ToListAsync(cancellationToken);
 
-        var csv = new StringBuilder();
-        csv.AppendLine("Code,Name,Status,CreatedAt");
+        // 2️⃣ 🔥 GENERATE EXCEL (SERVICE CALL)
+        var bytes = _excelExportService.Export(branches, "Branches");
 
-        foreach (var b in branches)
-        {
-            csv.AppendLine($"{b.Code},{b.Name},{b.Status},{b.CreatedAt:yyyy-MM-dd HH:mm:ss}");
-        }
-
-        return Result.Success(Encoding.UTF8.GetBytes(csv.ToString()));
+        return Result.Success(bytes);
     }
 }

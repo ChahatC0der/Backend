@@ -1,10 +1,12 @@
 ﻿using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Extensions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Branches.DTOs;
 using SchoolERP.Domain.Shared.Results;
 using SchoolERP.Domain.Tenants.Entities;
+using System.Linq.Expressions;
 
 namespace SchoolERP.Application.Features.Branches.Commands.CreateBranch;
 
@@ -16,21 +18,26 @@ public class CreateBranchCommandHandler : IRequestHandler<CreateBranchCommand, R
 
     public async Task<Result<BranchResponse>> Handle(CreateBranchCommand request, CancellationToken cancellationToken)
     {
-        // 1. Check Tenant exists
-        var tenantExists = await _dbContext.Set<Tenant>()
-            .AnyAsync(t => t.Id == request.TenantId && !t.IsDeleted, cancellationToken);
+        // 1️⃣ CLEAN CODE
+        var code = request.Request.Code?.Trim().ToUpper() ?? string.Empty;
 
-        if (!tenantExists)
-            return Error.NotFound("Tenant", request.TenantId.ToString());
+        // 2️⃣ CHECK TENANT EXISTS (Using Helper)
+        var tenantExistsError = await _dbContext.EnsureEntityExistsAsync<Tenant>(request.TenantId, cancellationToken);
+        if (tenantExistsError is not null)
+            return tenantExistsError;
 
-        // 2. Check Code uniqueness within tenant
-        var codeExists = await _dbContext.Set<Branch>()
-            .AnyAsync(b => b.TenantId == request.TenantId && b.Code == request.Request.Code && !b.IsDeleted, cancellationToken);
+        // 3️⃣ UNIQUENESS CHECK (Using Helper)
+        var checks = new (Expression<Func<Branch, bool>> Predicate, string Message)[]
+        {
+            (b => b.Code == code && b.TenantId == request.TenantId && !b.IsDeleted,
+                $"Branch code '{code}' already exists in this tenant.")
+        };
 
-        if (codeExists)
-            return Error.Conflict($"Branch code '{request.Request.Code}' already exists in this tenant.");
+        var uniquenessError = await _dbContext.EnsureAllUniqueAsync(checks, cancellationToken);
+        if (uniquenessError is not null)
+            return uniquenessError;
 
-        // 3. If setting as Default, reset other defaults for this tenant
+        // 4️⃣ RESET OTHER DEFAULTS (if setting default)
         if (request.Request.IsDefault)
         {
             var existingDefaults = await _dbContext.Set<Branch>()
@@ -40,16 +47,15 @@ public class CreateBranchCommandHandler : IRequestHandler<CreateBranchCommand, R
                 item.IsDefault = false;
         }
 
-        // 4. Create Branch
+        // 5️⃣ CREATE
         var branch = request.Request.Adapt<Branch>();
-        branch.Id = Guid.NewGuid();
-        branch.TenantId = request.TenantId;
-        branch.Status = "active";
-        branch.Settings = "{}";
+       // branch.TenantId = request.TenantId;
 
         await _dbContext.Set<Branch>().AddAsync(branch, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(branch.Adapt<BranchResponse>(), "Branch created successfully.");
+        // 6️⃣ RESPONSE
+        var response = branch.Adapt<BranchResponse>();
+        return Result.Success(response, "Branch created successfully.");
     }
 }

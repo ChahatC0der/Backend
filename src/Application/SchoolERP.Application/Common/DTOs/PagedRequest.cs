@@ -1,6 +1,6 @@
 ﻿namespace SchoolERP.Application.Common.DTOs;
 
-public class PagedRequest
+public record PagedRequest
 {
     public int Page { get; set; } = 1;
     public int Size { get; set; } = 10;

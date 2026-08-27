@@ -1,5 +1,4 @@
-﻿using Mapster;
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.DTOs;
 using SchoolERP.Application.Common.Interfaces;
@@ -26,7 +25,8 @@ public class GetBranchesQueryHandler : IRequestHandler<GetBranchesQuery, Result<
             var search = request.Request.SearchTerm.ToLower();
             query = query.Where(b =>
                 b.Name.ToLower().Contains(search) ||
-                b.Code.ToLower().Contains(search));
+                b.Code.ToLower().Contains(search) ||
+                (b.ContactPerson != null && b.ContactPerson.ToLower().Contains(search)));
         }
 
         // Sorting
@@ -40,17 +40,34 @@ public class GetBranchesQueryHandler : IRequestHandler<GetBranchesQuery, Result<
 
         var totalCount = await query.CountAsync(cancellationToken);
 
+        // 🔥 MANUAL PROJECTION (Mapster-free + UpdatedAt included)
         var items = await query
             .Skip((request.Request.Page - 1) * request.Request.Size)
             .Take(request.Request.Size)
+            .Select(b => new BranchResponse(
+                b.Id,
+                b.TenantId,
+                b.Name,
+                b.Code,
+                b.Address,
+                b.Phone,
+                b.Email,
+                b.ContactPerson,
+                b.IsDefault,
+                b.Status,
+                b.CreatedAt,
+                b.UpdatedAt
+            ))
             .ToListAsync(cancellationToken);
 
-        return Result.Success(new PagedResponse<BranchResponse>
+        var response = new PagedResponse<BranchResponse>
         {
-            Data = items.Adapt<IEnumerable<BranchResponse>>(),
+            Data = items,
             Page = request.Request.Page,
             Size = request.Request.Size,
             TotalCount = totalCount
-        });
+        };
+
+        return Result.Success(response);
     }
 }

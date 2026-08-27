@@ -48,6 +48,19 @@ public record PatchTenantRequest(
     string? Status = null
 );
 
+// 🔥 BULK PATCH REQUEST (Alag se)
+public record BulkPatchTenantRequest(
+    List<Guid> Ids,
+    string? Code = null,
+    string? Name = null,
+    string? Subdomain = null,
+    string? ContactEmail = null,
+    string? ContactPhone = null,
+    string? Address = null,
+    string? Plan = null,
+    string? Status = null
+);
+
 // 🔥 RESPONSE
 public record TenantResponse(
     Guid Id,

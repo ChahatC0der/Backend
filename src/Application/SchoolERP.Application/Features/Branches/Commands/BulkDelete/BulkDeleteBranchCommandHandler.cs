@@ -14,6 +14,7 @@ public class BulkDeleteBranchCommandHandler : IRequestHandler<BulkDeleteBranchCo
 
     public async Task<Result<int>> Handle(BulkDeleteBranchCommand request, CancellationToken cancellationToken)
     {
+        // 1️⃣ FETCH BRANCHES
         var branches = await _dbContext.Set<Branch>()
             .Where(b => b.TenantId == request.TenantId && request.Request.Ids.Contains(b.Id) && !b.IsDeleted)
             .ToListAsync(cancellationToken);
@@ -21,16 +22,19 @@ public class BulkDeleteBranchCommandHandler : IRequestHandler<BulkDeleteBranchCo
         if (!branches.Any())
             return Error.NotFound("Branches", "No matching branches found.");
 
+        // 2️⃣ SOFT DELETE
         foreach (var branch in branches)
         {
             branch.IsDeleted = true;
             branch.DeletedAt = DateTime.UtcNow;
-            branch.UpdatedAt = DateTime.UtcNow;
             branch.Status = "closed";
+            // 🔥 UpdatedAt auto-set by SaveChangesAsync override (no manual set needed)
         }
 
+        // 3️⃣ SAVE (AUTO AUDIT)
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        // 4️⃣ RETURN
         return Result.Success(branches.Count, $"{branches.Count} branch(es) deleted successfully.");
     }
 }

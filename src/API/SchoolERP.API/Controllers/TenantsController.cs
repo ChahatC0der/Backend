@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SchoolERP.Application.Common.DTOs;
 using SchoolERP.Application.Features.Tenants.Commands.BulkDelete;
+using SchoolERP.Application.Features.Tenants.Commands.BulkPatch;
 using SchoolERP.Application.Features.Tenants.Commands.BulkUpdate;
 using SchoolERP.Application.Features.Tenants.Commands.CreateTenant;
 using SchoolERP.Application.Features.Tenants.Commands.DeleteTenant;
@@ -62,6 +63,12 @@ public class TenantsController : BaseApiController
     public async Task<IActionResult> Patch(Guid id, [FromBody] PatchTenantRequest request)
         => HandleResult(await Mediator.Send(new PatchTenantCommand(id, request)));
 
+    // 📌 BULK PATCH (PARTIAL) — NEW
+    [HttpPatch("bulk")]
+    [AllowAnonymous]
+    public async Task<IActionResult> BulkPatch([FromBody] BulkPatchTenantRequest request)
+        => HandleResult(await Mediator.Send(new BulkPatchTenantCommand(request)));
+
     // 📌 DELETE (SOFT)
     [HttpDelete("{id:guid}")]
     [AllowAnonymous]
@@ -89,7 +96,7 @@ public class TenantsController : BaseApiController
         if (result.IsFailure)
             return HandleResult(result);
 
-        var fileName = $"tenants_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
-        return File(result.Value!, "text/csv", fileName);
+        var fileName = $"tenants_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+        return File(result.Value!, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
     }
 }

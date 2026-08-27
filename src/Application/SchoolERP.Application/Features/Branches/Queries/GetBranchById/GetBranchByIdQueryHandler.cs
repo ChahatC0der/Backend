@@ -1,6 +1,6 @@
-﻿using Mapster;
-using MediatR;
+﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Extensions; // 👈 HELPER YAHAN HAI
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Branches.DTOs;
 using SchoolERP.Domain.Shared.Results;
@@ -16,12 +16,29 @@ public class GetBranchByIdQueryHandler : IRequestHandler<GetBranchByIdQuery, Res
 
     public async Task<Result<BranchResponse>> Handle(GetBranchByIdQuery request, CancellationToken cancellationToken)
     {
-        var branch = await _dbContext.Set<Branch>()
-            .FirstOrDefaultAsync(b => b.Id == request.BranchId && b.TenantId == request.TenantId && !b.IsDeleted, cancellationToken);
+        // 1️⃣ 🔥 GET USING HELPER (NO MANUAL NULL CHECK)
+        var branchResult = await _dbContext.GetEntityByIdAsync<Branch>(request.BranchId, cancellationToken);
+        if (branchResult.IsFailure)
+            return branchResult.Error;
 
-        if (branch == null)
-            return Error.NotFound("Branch", request.BranchId.ToString());
+        var branch = branchResult.Value;
 
-        return Result.Success(branch.Adapt<BranchResponse>());
+        // 2️⃣ 🔥 MANUAL MAPPING WITH UPDATEDAT
+        var response = new BranchResponse(
+            branch.Id,
+            branch.TenantId,
+            branch.Name,
+            branch.Code,
+            branch.Address,
+            branch.Phone,
+            branch.Email,
+            branch.ContactPerson,
+            branch.IsDefault,
+            branch.Status,
+            branch.CreatedAt,
+            branch.UpdatedAt
+        );
+
+        return Result.Success(response);
     }
 }

@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Tenants.Entities;
 
-public class Branch : GuidAuditableEntity
+public class Branch : GuidAuditableEntity, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
     public string Name { get; set; } = string.Empty;

@@ -1,10 +1,12 @@
 ﻿using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Extensions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Branches.DTOs;
 using SchoolERP.Domain.Shared.Results;
 using SchoolERP.Domain.Tenants.Entities;
+using System.Linq.Expressions;
 
 namespace SchoolERP.Application.Features.Branches.Commands.UpdateBranch;
 
@@ -12,47 +14,54 @@ public class UpdateBranchCommandHandler : IRequestHandler<UpdateBranchCommand, R
 {
     private readonly IApplicationDbContext _dbContext;
 
-    public UpdateBranchCommandHandler(IApplicationDbContext dbContext) => _dbContext = dbContext;
+    public UpdateBranchCommandHandler(IApplicationDbContext dbContext)
+        => _dbContext = dbContext;
 
     public async Task<Result<BranchResponse>> Handle(UpdateBranchCommand request, CancellationToken cancellationToken)
     {
-        var branch = await _dbContext.Set<Branch>()
-            .FirstOrDefaultAsync(b => b.Id == request.BranchId && b.TenantId == request.TenantId && !b.IsDeleted, cancellationToken);
+        // 1️⃣ 🔥 FETCH USING HELPER
+        var branchResult = await _dbContext.GetEntityByIdAsync<Branch>(request.BranchId, cancellationToken);
+        if (branchResult.IsFailure)
+            return branchResult.Error;
 
-        if (branch == null)
-            return Error.NotFound("Branch", request.BranchId.ToString());
+        var branch = branchResult.Value;
 
-        // Code uniqueness (exclude current)
-        if (branch.Code != request.Request.Code)
+        // 2️⃣ CLEAN CODE
+        var code = request.Request.Code.Trim().ToUpper();
+
+        // 3️⃣ 🔥 UNIQUENESS CHECK (EXCLUDE CURRENT)
+        var checks = new (Expression<Func<Branch, bool>> Predicate, string Message)[]
         {
-            var codeExists = await _dbContext.Set<Branch>()
-                .AnyAsync(b => b.TenantId == request.TenantId && b.Code == request.Request.Code && b.Id != request.BranchId && !b.IsDeleted, cancellationToken);
-            if (codeExists)
-                return Error.Conflict($"Branch code '{request.Request.Code}' already exists.");
-        }
+            (b => b.Code == code && b.TenantId == request.TenantId && b.Id != request.BranchId && !b.IsDeleted,
+                $"Branch code '{code}' already exists in this tenant.")
+        };
 
-        // If setting as Default, reset other defaults
+        var error = await _dbContext.EnsureAllUniqueAsync(checks, cancellationToken);
+        if (error is not null)
+            return error;
+
+        // 4️⃣ RESET OTHER DEFAULTS (if setting default)
         if (request.Request.IsDefault)
         {
             var existingDefaults = await _dbContext.Set<Branch>()
                 .Where(b => b.TenantId == request.TenantId && b.IsDefault && b.Id != request.BranchId)
                 .ToListAsync(cancellationToken);
+
             foreach (var item in existingDefaults)
                 item.IsDefault = false;
         }
 
-        branch.Name = request.Request.Name;
-        branch.Code = request.Request.Code;
-        branch.Address = request.Request.Address;
-        branch.Phone = request.Request.Phone;
-        branch.Email = request.Request.Email;
-        branch.ContactPerson = request.Request.ContactPerson;
-        branch.IsDefault = request.Request.IsDefault;
-        branch.Status = request.Request.Status;
-        branch.UpdatedAt = DateTime.UtcNow;
+        // 5️⃣ 🔥 MAPSTER: UPDATE EXISTING
+        request.Request.Adapt(branch);
+
+        // 6️⃣ FORCE STATE CHANGE (so UpdatedAt gets set)
+        //_dbContext.Entry(branch).State = EntityState.Modified;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(branch.Adapt<BranchResponse>(), "Branch updated successfully.");
+        // 7️⃣ 🔥 RESPONSE
+        var response = branch.Adapt<BranchResponse>();
+
+        return Result.Success(response, "Branch updated successfully.");
     }
 }

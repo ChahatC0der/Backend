@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Extensions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Shared.Results;
 using SchoolERP.Domain.Tenants.Entities;
@@ -10,21 +11,23 @@ public class DeleteBranchCommandHandler : IRequestHandler<DeleteBranchCommand, R
 {
     private readonly IApplicationDbContext _dbContext;
 
-    public DeleteBranchCommandHandler(IApplicationDbContext dbContext) => _dbContext = dbContext;
+    public DeleteBranchCommandHandler(IApplicationDbContext dbContext)
+        => _dbContext = dbContext;
 
     public async Task<Result<bool>> Handle(DeleteBranchCommand request, CancellationToken cancellationToken)
     {
-        var branch = await _dbContext.Set<Branch>()
-            .FirstOrDefaultAsync(b => b.Id == request.BranchId && b.TenantId == request.TenantId && !b.IsDeleted, cancellationToken);
+        // 1️⃣ FETCH
+        var branchResult = await _dbContext.GetEntityByIdAsync<Branch>(request.BranchId, cancellationToken);
+        if (branchResult.IsFailure)
+            return branchResult.Error;
 
-        if (branch == null)
-            return Error.NotFound("Branch", request.BranchId.ToString());
+        var branch = branchResult.Value;
 
+        // 2️⃣ SOFT DELETE
         branch.IsDeleted = true;
         branch.DeletedAt = DateTime.UtcNow;
-        branch.UpdatedAt = DateTime.UtcNow;
-        branch.Status = "closed";
 
+        // 🔥 UpdatedAt auto-set by SaveChangesAsync
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result.Success(true, $"Branch '{branch.Name}' deleted successfully.");

@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SchoolERP.Domain.Common;
 
-namespace SchoolERP.Infrastructure.Persistence.Configurations;
+namespace SchoolERP.Infrastructure.Persistence.Configurations.Common;
 
 /// <summary>
 /// Base configuration for entities with GUID ID (uniqueidentifier)

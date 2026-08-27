@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Domain.Tenants.Entities;
 using SchoolERP.Infrastructure.Data;
 using SchoolERP.Infrastructure.Identity;
 using SchoolERP.Infrastructure.MultiTenancy;
@@ -23,7 +24,7 @@ public static class DependencyInjection
         // ==========================================================
         // 🔥 1. DATABASE (EF Core)
         // ==========================================================
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddDbContext<TenantDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Default")));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -45,24 +46,22 @@ public static class DependencyInjection
         // ==========================================================
         // 🔥 3. MULTI-TENANCY (Finbuckle)
         // ==========================================================
+
+        services.AddScoped<TenantStore>();
+
         services.AddMultiTenant<AppTenantInfo>()
-            .WithHostStrategy()
-            .WithHeaderStrategy()
-            .WithInMemoryStore(options =>
-            {
-                options.Tenants = new List<AppTenantInfo>
-                {
-                    new() { Id = "11111111-1111-1111-1111-111111111111",
-                            Identifier = "school1", Name = "ABC High School" },
-                    new() { Id = "22222222-2222-2222-2222-222222222222",
-                            Identifier = "school2", Name = "XYZ Public School" }
-                };
-            });
+     .WithHeaderStrategy("TenantId")
+     .WithStore(
+         ServiceLifetime.Scoped,
+         sp => sp.GetRequiredService<TenantStore>());
+
+
 
         // ==========================================================
         // 🔥 4. TENANT SERVICE (Current Context)
         // ==========================================================
         services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // ==========================================================
         // 🔥 5. DAPPER (Read Side)
@@ -76,6 +75,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<ICacheService, MemoryCacheService>();
 
+        services.AddScoped<IExcelExportService, ClosedXmlExportService>();
         return services;
     }
 }

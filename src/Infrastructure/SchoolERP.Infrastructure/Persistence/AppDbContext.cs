@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Common;
+using SchoolERP.Domain.Rbac.Entities;
 using SchoolERP.Domain.Tenants.Entities;
 using SchoolERP.Infrastructure.Identity;
 using SchoolERP.Infrastructure.Persistence.Configurations; // 👈 NAYA NAMESPACE
@@ -17,6 +18,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
 
     private Guid CurrentTenantId => _tenantService.GetTenantId();
 
+
+
     public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService tenantService)
         : base(options)
     {
@@ -27,6 +30,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Branch> Branches => Set<Branch>(); // 👈 Uncomment karo
 
+    public DbSet<Module> Modules => Set<Module>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<UserToken> UserTokens => Set<UserToken>();
+    public DbSet<BulkRoleJob> BulkRoleJobs => Set<BulkRoleJob>();
+    public DbSet<RbacAuditLog> RbacAuditLogs => Set<RbacAuditLog>();
+
     DbSet<TEntity> IApplicationDbContext.Set<TEntity>() => base.Set<TEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,32 +46,32 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         base.OnModelCreating(modelBuilder);
 
         // ---- Identity Mapping (Pehle jaisa) ----
-        modelBuilder.Entity<ApplicationUser>(entity =>
-        {
-            entity.ToTable("Users");
-            entity.Property(e => e.TenantId).HasColumnName("TenantId");
-            entity.Property(e => e.BranchId).HasColumnName("BranchId");
-            entity.Property(e => e.Name).HasColumnName("Name");
-            entity.Property(e => e.Phone).HasColumnName("Phone");
-            entity.Property(e => e.IsPlatformAdmin).HasColumnName("IsPlatformAdmin");
-            entity.Property(e => e.Status).HasColumnName("Status");
-            entity.Property(e => e.PermissionsVersion).HasColumnName("PermissionsVersion");
-            entity.Property(e => e.LastLogin).HasColumnName("LastLogin");
-            entity.Property(e => e.DeletedAt).HasColumnName("DeletedAt");
-        });
+        //modelBuilder.Entity<ApplicationUser>(entity =>
+        //{
+        //    entity.ToTable("Users");
+        //    entity.Property(e => e.TenantId).HasColumnName("TenantId");
+        //    entity.Property(e => e.BranchId).HasColumnName("BranchId");
+        //    entity.Property(e => e.Name).HasColumnName("Name");
+        //    entity.Property(e => e.Phone).HasColumnName("Phone");
+        //    entity.Property(e => e.IsPlatformAdmin).HasColumnName("IsPlatformAdmin");
+        //    entity.Property(e => e.Status).HasColumnName("Status");
+        //    entity.Property(e => e.PermissionsVersion).HasColumnName("PermissionsVersion");
+        //    entity.Property(e => e.LastLogin).HasColumnName("LastLogin");
+        //    entity.Property(e => e.DeletedAt).HasColumnName("DeletedAt");
+        //});
 
-        modelBuilder.Entity<IdentityRole<long>>(entity => entity.ToTable("Roles"));
-        modelBuilder.Entity<IdentityUserRole<long>>(entity => entity.ToTable("UserRoles"));
-        modelBuilder.Entity<IdentityRoleClaim<long>>(entity =>
-        {
-            entity.ToTable("RolePermissions");
-            entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
-        });
-        modelBuilder.Entity<IdentityUserClaim<long>>(entity =>
-        {
-            entity.ToTable("UserPermissions");
-            entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
-        });
+        //modelBuilder.Entity<IdentityRole<long>>(entity => entity.ToTable("Roles"));
+        //modelBuilder.Entity<IdentityUserRole<long>>(entity => entity.ToTable("UserRoles"));
+        //modelBuilder.Entity<IdentityRoleClaim<long>>(entity =>
+        //{
+        //    entity.ToTable("RolePermissions");
+        //    entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
+        //});
+        //modelBuilder.Entity<IdentityUserClaim<long>>(entity =>
+        //{
+        //    entity.ToTable("UserPermissions");
+        //    entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
+        //});
 
         // ---- 🔥 ALL ENTITY CONFIGURATIONS LOADED FROM SEPARATE FILES ----
         // Ab Tenant, Branch, MasterCategory, MasterItem etc. ki alag configuration files se apply hongi.
@@ -98,6 +110,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        if (CurrentTenantId == Guid.Empty)
+        {
+            // ✅ Optional: Log karo for debugging
+            Console.WriteLine($"⚠️ WARNING: CurrentTenantId is empty! Check Finbuckle configuration.");
+
+            // ✅ Throw meaningful error instead of FK constraint error
+            throw new InvalidOperationException(
+                "Tenant context not resolved. Please ensure X-Tenant-Id header or query parameter is provided.");
+        }
         // 🔥 Auto-set TenantId
         foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
         {

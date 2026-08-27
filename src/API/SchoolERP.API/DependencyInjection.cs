@@ -7,7 +7,9 @@ using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SchoolERP.API.Authorization;
+using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Infrastructure.Persistence;
+using SchoolERP.Infrastructure.Services;
 using System.Text;
 
 namespace SchoolERP.API;
@@ -41,11 +43,19 @@ public static class DependencyInjection
             };
         });
 
+
+
         // ==========================================================
         // 🔥 2. AUTHORIZATION (RBAC - Permission Handler)
         // ==========================================================
-        services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+        services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
+        // Add HttpContextAccessor
+        services.AddHttpContextAccessor();
+
+        // Permission service
+        services.AddScoped<IPermissionService, PermissionService>();
 
         // ==========================================================
         // 🔥 3. OPEN TELEMETRY (Tracing)
