@@ -12,4 +12,12 @@ public class TenantDbContext : DbContext
     }
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Apply entity configurations in this assembly so TenantConfiguration is applied
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(TenantDbContext).Assembly);
+    }
 }

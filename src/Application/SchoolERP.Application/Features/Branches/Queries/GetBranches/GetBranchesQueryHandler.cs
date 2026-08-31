@@ -11,18 +11,30 @@ namespace SchoolERP.Application.Features.Branches.Queries.GetBranches;
 public class GetBranchesQueryHandler : IRequestHandler<GetBranchesQuery, Result<PagedResponse<BranchResponse>>>
 {
     private readonly IApplicationDbContext _dbContext;
+    private readonly ICurrentTenantService _tenantService;
 
-    public GetBranchesQueryHandler(IApplicationDbContext dbContext) => _dbContext = dbContext;
-
-    public async Task<Result<PagedResponse<BranchResponse>>> Handle(GetBranchesQuery request, CancellationToken cancellationToken)
+    public GetBranchesQueryHandler(
+        IApplicationDbContext dbContext,
+        ICurrentTenantService tenantService)
     {
+        _dbContext = dbContext;
+        _tenantService = tenantService;
+    }
+
+    public async Task<Result<PagedResponse<BranchResponse>>> Handle(
+        GetBranchesQuery request,
+        CancellationToken cancellationToken)
+    {
+        var tenantId = _tenantService.GetTenantId();
+
         var query = _dbContext.Set<Branch>()
-            .Where(b => b.TenantId == request.TenantId && !b.IsDeleted);
+            .Where(b => b.TenantId == tenantId && !b.IsDeleted);
 
         // Search
         if (!string.IsNullOrEmpty(request.Request.SearchTerm))
         {
             var search = request.Request.SearchTerm.ToLower();
+
             query = query.Where(b =>
                 b.Name.ToLower().Contains(search) ||
                 b.Code.ToLower().Contains(search) ||
@@ -32,15 +44,26 @@ public class GetBranchesQueryHandler : IRequestHandler<GetBranchesQuery, Result<
         // Sorting
         query = request.Request.SortBy?.ToLower() switch
         {
-            "name" => request.Request.SortOrder == "desc" ? query.OrderByDescending(b => b.Name) : query.OrderBy(b => b.Name),
-            "code" => request.Request.SortOrder == "desc" ? query.OrderByDescending(b => b.Code) : query.OrderBy(b => b.Code),
-            "status" => request.Request.SortOrder == "desc" ? query.OrderByDescending(b => b.Status) : query.OrderBy(b => b.Status),
-            _ => request.Request.SortOrder == "desc" ? query.OrderByDescending(b => b.CreatedAt) : query.OrderBy(b => b.CreatedAt)
+            "name" => request.Request.SortOrder == "desc"
+                ? query.OrderByDescending(b => b.Name)
+                : query.OrderBy(b => b.Name),
+
+            "code" => request.Request.SortOrder == "desc"
+                ? query.OrderByDescending(b => b.Code)
+                : query.OrderBy(b => b.Code),
+
+            "status" => request.Request.SortOrder == "desc"
+                ? query.OrderByDescending(b => b.Status)
+                : query.OrderBy(b => b.Status),
+
+            _ => request.Request.SortOrder == "desc"
+                ? query.OrderByDescending(b => b.CreatedAt)
+                : query.OrderBy(b => b.CreatedAt)
         };
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        // 🔥 MANUAL PROJECTION (Mapster-free + UpdatedAt included)
+        // MANUAL PROJECTION
         var items = await query
             .Skip((request.Request.Page - 1) * request.Request.Size)
             .Take(request.Request.Size)

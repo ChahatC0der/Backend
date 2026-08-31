@@ -27,7 +27,6 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
     }
 
     // 🔥 Business tables
-    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Branch> Branches => Set<Branch>(); // 👈 Uncomment karo
 
     public DbSet<Module> Modules => Set<Module>();
@@ -117,7 +116,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
 
             // ✅ Throw meaningful error instead of FK constraint error
             throw new InvalidOperationException(
-                "Tenant context not resolved. Please ensure X-Tenant-Id header or query parameter is provided.");
+                "Tenant context not resolved. Please ensure TenantId header or query parameter is provided.");
         }
         // 🔥 Auto-set TenantId
         foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())

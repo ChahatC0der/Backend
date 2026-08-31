@@ -14,10 +14,11 @@ public class CurrentTenantService : ICurrentTenantService
 
     public Guid GetTenantId()
     {
-        var tenantInfo = _tenantAccessor.MultiTenantContext?.TenantInfo;
-        if (tenantInfo == null || string.IsNullOrEmpty(tenantInfo.Id))
-            return Guid.Empty;
-        return Guid.Parse(tenantInfo.Id);
+        var id = _tenantAccessor.MultiTenantContext?.TenantInfo?.Id;
+
+        return Guid.TryParse(id, out var tenantId)
+            ? tenantId
+            : Guid.Empty;
     }
 
     public string GetTenantName()

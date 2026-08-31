@@ -4,4 +4,4 @@ using SchoolERP.Application.Features.Branches.DTOs;
 
 namespace SchoolERP.Application.Features.Branches.Queries.GetBranchById;
 
-public record GetBranchByIdQuery(Guid TenantId, Guid BranchId) : IQuery<BranchResponse>;
+public record GetBranchByIdQuery(Guid BranchId) : IQuery<BranchResponse>;

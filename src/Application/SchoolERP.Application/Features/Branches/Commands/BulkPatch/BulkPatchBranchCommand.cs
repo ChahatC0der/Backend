@@ -4,4 +4,4 @@ using SchoolERP.Application.Features.Branches.DTOs;
 
 namespace SchoolERP.Application.Features.Branches.Commands.BulkPatch;
 
-public record BulkPatchBranchCommand(Guid TenantId, BulkPatchBranchRequest Request) : ICommand<int>;
+public record BulkPatchBranchCommand(BulkPatchBranchRequest Request) : ICommand<int>;

@@ -25,7 +25,12 @@ public static class DependencyInjection
         // 🔥 1. DATABASE (EF Core)
         // ==========================================================
         services.AddDbContext<TenantDbContext>(options =>
-            options.UseSqlServer(configuration.GetConnectionString("Default")));
+     options.UseSqlServer(
+         configuration.GetConnectionString("Default")));
+
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(
+                configuration.GetConnectionString("Default")));
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
@@ -50,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<TenantStore>();
 
         services.AddMultiTenant<AppTenantInfo>()
+            .WithHostStrategy()
      .WithHeaderStrategy("TenantId")
      .WithStore(
          ServiceLifetime.Scoped,

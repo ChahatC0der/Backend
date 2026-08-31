@@ -5,4 +5,4 @@ using SchoolERP.Application.Features.Branches.DTOs;
 
 namespace SchoolERP.Application.Features.Branches.Queries.GetBranches;
 
-public record GetBranchesQuery(Guid TenantId, PagedRequest Request) : IQuery<PagedResponse<BranchResponse>>;
+public record GetBranchesQuery(PagedRequest Request) : IQuery<PagedResponse<BranchResponse>>;

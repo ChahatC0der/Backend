@@ -4,4 +4,4 @@ using SchoolERP.Application.Features.Branches.DTOs;
 
 namespace SchoolERP.Application.Features.Branches.Commands.BulkDelete;
 
-public record BulkDeleteBranchCommand(Guid TenantId, BulkDeleteBranchRequest Request) : ICommand<int>;
+public record BulkDeleteBranchCommand(BulkDeleteBranchRequest Request) : ICommand<int>;

@@ -4,4 +4,4 @@ using SchoolERP.Application.Features.Branches.DTOs;
 
 namespace SchoolERP.Application.Features.Branches.Commands.CreateBranch;
 
-public record CreateBranchCommand(Guid TenantId, CreateBranchRequest Request) : ICommand<BranchResponse>;
+public record CreateBranchCommand(CreateBranchRequest Request) : ICommand<BranchResponse>;
