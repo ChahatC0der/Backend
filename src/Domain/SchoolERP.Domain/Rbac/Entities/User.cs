@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Rbac.Entities;
 
-public class User : BaseAuditableEntity
+public class User : BaseEntity
 {
     public Guid? TenantId { get; set; }
     public Guid? BranchId { get; set; }

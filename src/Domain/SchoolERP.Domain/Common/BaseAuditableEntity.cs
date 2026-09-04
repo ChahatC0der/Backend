@@ -4,9 +4,9 @@ using System.Text;
 
 namespace SchoolERP.Domain.Common
 {
-    public abstract class BaseAuditableEntity : BaseEntity
+    public abstract class BaseAuditableEntity
     {
-        public Guid? CreatedBy { get; set; }
-        public Guid? UpdatedBy { get; set; }
+        public long? PerformedBy { get; set; }
+        
     }
 }

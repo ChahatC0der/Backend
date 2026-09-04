@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Rbac.Entities;
 
-public class UserToken : TenantAuditableEntity
+public class UserToken : BaseTenantEntity
 {
     public long UserId { get; set; }
     public string TokenType { get; set; } = string.Empty;

@@ -2,17 +2,19 @@
 
 namespace SchoolERP.Domain.Rbac.Entities;
 
-public class RbacAuditLog : TenantAuditableEntity
+public class RbacAuditLog : BaseAuditLog
 {
-    public long PerformedBy { get; set; }
+    //public long PerformedBy { get; set; }
+    public Guid? TenantId { get; set; }   // optional, not tenant-scoped
     public long? AffectedUserId { get; set; }
     public long? AffectedRoleId { get; set; }
+    public string Resource { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
     public string? OldValues { get; set; }
     public string? NewValues { get; set; }
     public string? Reason { get; set; }
 
-    public User PerformedByUser { get; set; } = null!;
+    public User? PerformedByUser { get; set; } = null!;
     public User? AffectedUser { get; set; }
     public Role? AffectedRole { get; set; }
 }

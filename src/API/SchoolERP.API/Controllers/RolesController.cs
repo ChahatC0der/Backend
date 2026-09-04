@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolERP.API.Authorization;
 using SchoolERP.Application.Features.Rbac.Commands.Role.CreateRole;
 using SchoolERP.Application.Features.Rbac.DTOs;
 using SchoolERP.Application.Features.Rbac.Queries.Role.GetAllRolesLight;
@@ -21,7 +22,7 @@ public class RolesController : BaseApiController
     }
 
     [HttpGet]
-    [AllowAnonymous] // TODO: [HasPermission("role.read")]
+    [HasPermission("role.read")]
     public async Task<IActionResult> GetRoles([FromQuery] GetRolesRequest request)
         => HandleResult(await _mediator.Send(new GetRolesQuery(request)));
 
@@ -44,10 +45,8 @@ public class RolesController : BaseApiController
     [AllowAnonymous] // TODO: [HasPermission("role.update")]
     public async Task<IActionResult> UpdateRole(long id, [FromBody] UpdateRoleRequest request)
     {
-        if (id != request.Id)
-            return BadRequest("Id in route does not match Id in body.");
 
-        return HandleResult(await _mediator.Send(new UpdateRoleCommand(request)));
+        return HandleResult(await _mediator.Send(new UpdateRoleCommand(id,request)));
     }
 
     [HttpDelete("{id:long}")]

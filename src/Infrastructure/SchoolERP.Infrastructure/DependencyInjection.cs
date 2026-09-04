@@ -34,6 +34,8 @@ public static class DependencyInjection
 
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
+
+
         // ==========================================================
         // 🔥 2. IDENTITY (User Store)
         // ==========================================================

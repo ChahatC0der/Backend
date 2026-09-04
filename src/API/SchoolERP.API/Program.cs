@@ -35,11 +35,14 @@ var app = builder.Build();
 // ==========================================================
 // 🔥 3. MIDDLEWARE PIPELINE
 // ==========================================================
-app.UseSerilogRequestLogging();      // HTTP Logging
-app.UseMiddleware<GlobalExceptionHandlingMiddleware>(); // Exception Handler
-app.UseMultiTenant();                // Multi-Tenancy
 
-// Swagger + Scalar UI (Development)
+app.UseSerilogRequestLogging();
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
+app.UseMultiTenant();
+
+// 🔥 Add UseRouting here
+app.UseRouting();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -54,10 +57,36 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseMultiTenant();
+
+app.Use(async (context, next) =>
+{
+    Console.WriteLine("===== BEFORE AUTH =====");
+    Console.WriteLine($"Scheme: {context.User.Identity?.AuthenticationType}");
+
+    await next();
+
+    Console.WriteLine("===== AFTER AUTH =====");
+    Console.WriteLine($"Authenticated: {context.User.Identity?.IsAuthenticated}");
+    Console.WriteLine($"AuthType: {context.User.Identity?.AuthenticationType}");
+});
+
+app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    Console.WriteLine("===== AFTER AUTHENTICATION MIDDLEWARE =====");
+    Console.WriteLine($"Authenticated: {context.User.Identity?.IsAuthenticated}");
+    Console.WriteLine($"AuthType: {context.User.Identity?.AuthenticationType}");
+
+    await next();
+});
+
+app.UseAuthorization();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Health Check
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse

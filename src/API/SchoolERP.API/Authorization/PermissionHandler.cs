@@ -1,46 +1,52 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using SchoolERP.Application.Common.Interfaces;
 using System.Security.Claims;
 
 namespace SchoolERP.API.Authorization;
 
 public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
 {
-    private readonly ILogger<PermissionHandler> _logger;
+    private readonly IPermissionService _permissionService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public PermissionHandler(ILogger<PermissionHandler> logger)
+    public PermissionHandler(
+        IPermissionService permissionService,
+        IHttpContextAccessor httpContextAccessor)
     {
-        _logger = logger;
+        _permissionService = permissionService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
-    protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PermissionRequirement requirement)
     {
-        // 🔥 1. Check if user is authenticated
-        if (!context.User.Identity?.IsAuthenticated ?? false)
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
         {
-            _logger.LogWarning("Unauthenticated user attempted to access {Permission}", requirement.Permission);
             context.Fail();
-            return Task.CompletedTask;
+            return;
         }
 
-        // 🔥 2. Check if user has the required permission claim
-        var hasPermission = context.User.Claims.Any(c =>
-            c.Type == "permission" && c.Value == requirement.Permission);
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !long.TryParse(userIdClaim.Value, out var userId))
+        {
+            context.Fail();
+            return;
+        }
 
+        // ✅ PermissionService call with CancellationToken
+        var hasPermission = await _permissionService.HasPermissionAsync(
+            userId,
+            requirement.Permission,
+            CancellationToken.None);  // authorization pipeline provides cancellation
         if (hasPermission)
         {
-            _logger.LogDebug("User {User} has permission {Permission}",
-                context.User.FindFirst(ClaimTypes.Email)?.Value,
-                requirement.Permission);
             context.Succeed(requirement);
         }
         else
         {
-            _logger.LogWarning("User {User} missing permission {Permission}",
-                context.User.FindFirst(ClaimTypes.Email)?.Value,
-                requirement.Permission);
             context.Fail();
         }
-
-        return Task.CompletedTask;
     }
 }

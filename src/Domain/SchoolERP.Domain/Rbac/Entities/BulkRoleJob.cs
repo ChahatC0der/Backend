@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Rbac.Entities;
 
-public class BulkRoleJob : TenantAuditableEntity
+public class BulkRoleJob : BaseTenantEntity
 {
     public long CreatedBy { get; set; }
     public long RoleId { get; set; }

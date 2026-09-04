@@ -5,7 +5,7 @@ using SchoolERP.Domain.Common; // IMustHaveTenant, BaseEntity (if applicable)
 namespace SchoolERP.Infrastructure.Persistence.Configurations.Common;
 
 public abstract class BaseTenantEntityConfiguration<TEntity> : BaseEntityConfiguration<TEntity>
-    where TEntity : BaseEntity, IMustHaveTenant
+    where TEntity : BaseTenantEntity, IMustHaveTenant
 {
     public override void Configure(EntityTypeBuilder<TEntity> builder)
     {

@@ -23,32 +23,72 @@ public static class DependencyInjection
         // ==========================================================
         // 🔥 1. AUTHENTICATION (JWT)
         // ==========================================================
+        // JWT Authentication
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         })
-        .AddJwtBearer(options =>
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+        ValidIssuer = configuration["Jwt:Issuer"],
+        ValidAudience = configuration["Jwt:Audience"],
+
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(configuration["Jwt:Secret"]!)
+        )
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
         {
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                ValidIssuer = configuration["JwtSettings:Issuer"],
-                ValidAudience = configuration["JwtSettings:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(configuration["JwtSettings:Secret"]!))
-            };
-        });
+            Console.WriteLine("===== JWT MESSAGE RECEIVED =====");
+            Console.WriteLine(
+                $"Token present: {!string.IsNullOrEmpty(context.Token)}"
+            );
+
+            return Task.CompletedTask;
+        },
+
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine("===== JWT AUTH FAILED =====");
+            Console.WriteLine(context.Exception.ToString());
+
+            return Task.CompletedTask;
+        },
+
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine("===== JWT TOKEN VALIDATED =====");
+            Console.WriteLine(
+                $"User: {context.Principal?.Identity?.Name}"
+            );
+
+            return Task.CompletedTask;
+        }
+    };
+});
+
+        services.AddAuthorization();
+
+        // Register JWT service
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 
 
         // ==========================================================
         // 🔥 2. AUTHORIZATION (RBAC - Permission Handler)
         // ==========================================================
-        services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
+        services.AddScoped<IAuthorizationHandler, PermissionHandler>();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         // Add HttpContextAccessor

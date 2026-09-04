@@ -19,7 +19,7 @@ public class GetPermissionsQueryHandler : IRequestHandler<GetPermissionsQuery, R
         var permissions = await _dbContext.Set<PermissionEntity>()
             .AsNoTracking()
             .Include(p => p.Module)
-            .Where(p => !p.IsDeleted)
+            //.Where(p => !p.IsDeleted)
             .OrderBy(p => p.Module.SortOrder)
                 .ThenBy(p => p.Key)
             .ProjectToType<PermissionResponse>()

@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Rbac.Entities;
 
-public class Role : TenantAuditableEntity
+public class Role : BaseTenantEntity
 {
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;

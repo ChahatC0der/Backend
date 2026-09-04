@@ -19,6 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Features\Authentication\Mappings\" />
+    <Folder Include="Features\Authentication\Queries\" />
     <Folder Include="Features\Rbac\Queries\Assignment\" />
   </ItemGroup>
 

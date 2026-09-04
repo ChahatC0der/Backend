@@ -32,10 +32,16 @@ public abstract class GuidAuditableEntity : GuidEntity,IAuditableTimestamps
 {
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    //public string? CreatedBy { get; set; }
-    //public string? UpdatedBy { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
+}
+
+public abstract class BaseAuditLog
+{
+    public long Id { get; set; }
+    public Guid? TenantId { get; set; }        // platform-level ke liye nullable
+    public long PerformedBy { get; set; }      // user id
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 // 🔥 Marker interfaces — TenantId/BranchId Guid hi rahenge
@@ -50,7 +56,7 @@ public interface IMustHaveBranch : IMustHaveTenant
 }
 
 // 🔥 Normal entities jo Tenant se link honi hain
-public abstract class TenantEntity : BaseEntity, IMustHaveTenant
+public abstract class BaseTenantEntity : BaseEntity, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
 }
@@ -58,6 +64,7 @@ public abstract class TenantEntity : BaseEntity, IMustHaveTenant
 public abstract class TenantAuditableEntity : BaseAuditableEntity, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 
 public abstract class BranchEntity : BaseEntity, IMustHaveBranch

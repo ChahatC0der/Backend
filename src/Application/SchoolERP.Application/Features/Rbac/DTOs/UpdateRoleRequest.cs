@@ -1,7 +1,7 @@
 ﻿namespace SchoolERP.Application.Features.Rbac.DTOs;
 
 public record UpdateRoleRequest(
-    long Id,
+    //long Id,
     string Name,
     string Code,
     string? Description,
