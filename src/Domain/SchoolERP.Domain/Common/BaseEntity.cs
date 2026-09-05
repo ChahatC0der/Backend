@@ -50,7 +50,7 @@ public interface IMustHaveTenant
     Guid TenantId { get; set; }
 }
 
-public interface IMustHaveBranch : IMustHaveTenant
+public interface IMustHaveBranch
 {
     Guid BranchId { get; set; }
 }
@@ -69,11 +69,10 @@ public abstract class TenantAuditableEntity : BaseAuditableEntity, IMustHaveTena
 
 public abstract class BranchEntity : BaseEntity, IMustHaveBranch
 {
-    public Guid TenantId { get; set; }
     public Guid BranchId { get; set; }
 }
 
-public abstract class BranchAuditableEntity : BaseAuditableEntity, IMustHaveBranch
+public abstract class BaseBranchEntity : BaseTenantEntity, IMustHaveBranch
 {
     public Guid TenantId { get; set; }
     public Guid BranchId { get; set; }

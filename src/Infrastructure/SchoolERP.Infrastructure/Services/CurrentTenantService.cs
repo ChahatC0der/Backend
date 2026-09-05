@@ -20,6 +20,14 @@ public class CurrentTenantService : ICurrentTenantService
             ? tenantId
             : Guid.Empty;
     }
+    public Guid GetBranchId()
+    {
+        var id = _tenantAccessor.MultiTenantContext?.TenantInfo?.Id;
+
+        return Guid.TryParse(id, out var tenantId)
+            ? tenantId
+            : Guid.Empty;
+    }
 
     public string GetTenantName()
         => _tenantAccessor.MultiTenantContext?.TenantInfo?.Name ?? "System";

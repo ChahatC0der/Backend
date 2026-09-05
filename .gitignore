@@ -43,3 +43,5 @@ appsettings.*.json
 
 ## Docker (if used later)
 docker-compose.override.yml
+/src/Domain/SchoolERP.Domain/Master/Entities/MasterCategory.cs
+/src/Domain/SchoolERP.Domain/Master/Entities/MasterItem.cs
