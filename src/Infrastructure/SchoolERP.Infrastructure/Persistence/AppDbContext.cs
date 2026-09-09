@@ -7,28 +7,32 @@ using SchoolERP.Domain.Common;
 using SchoolERP.Domain.Rbac.Entities;
 using SchoolERP.Domain.Tenants.Entities;
 using SchoolERP.Infrastructure.Identity;
-using SchoolERP.Infrastructure.Persistence.Configurations; // 👈 NAYA NAMESPACE
+using SchoolERP.Infrastructure.Persistence.Configurations;
+using System.Linq.Expressions;
 
 namespace SchoolERP.Infrastructure.Persistence;
 
 public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long>, long>, IApplicationDbContext
 {
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private IDbContextTransaction? _currentTransaction;
 
     private Guid CurrentTenantId => _tenantService.GetTenantId();
+    private Guid CurrentBranchId => _branchService.GetBranchId() ?? Guid.Empty;
 
-
-
-    public AppDbContext(DbContextOptions<AppDbContext> options, ICurrentTenantService tenantService)
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        ICurrentTenantService tenantService,
+        ICurrentBranchService branchService)
         : base(options)
     {
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     // 🔥 Business tables
-    public DbSet<Branch> Branches => Set<Branch>(); // 👈 Uncomment karo
-
+    public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<Module> Modules => Set<Module>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<Role> Roles => Set<Role>();
@@ -72,8 +76,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         //    entity.Property(e => e.ClaimType).HasColumnName("PermissionKey");
         //});
 
-        // ---- 🔥 ALL ENTITY CONFIGURATIONS LOADED FROM SEPARATE FILES ----
-        // Ab Tenant, Branch, MasterCategory, MasterItem etc. ki alag configuration files se apply hongi.
+        // ---- ALL ENTITY CONFIGURATIONS LOADED FROM SEPARATE FILES ----
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
         // ---- Global Query Filters (Tenant / Branch Isolation) ----
@@ -81,48 +84,52 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         {
             var clrType = entityType.ClrType;
 
+            // 1. TENANT FILTER (if implements IMustHaveTenant)
+            if (typeof(IMustHaveTenant).IsAssignableFrom(clrType))
+            {
+                var parameter = Expression.Parameter(clrType, "e");
+                var tenantProp = Expression.Property(parameter, "TenantId");
+                var currentTenant = Expression.Property(Expression.Constant(this), nameof(CurrentTenantId));
+                var tenantEquals = Expression.Equal(tenantProp, currentTenant);
+
+                modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(tenantEquals, parameter));
+            }
+
+            // 2. BRANCH FILTER (if implements IMustHaveBranch) — sirf BranchId
             if (typeof(IMustHaveBranch).IsAssignableFrom(clrType))
             {
-                var parameter = System.Linq.Expressions.Expression.Parameter(clrType, "e");
+                var parameter = Expression.Parameter(clrType, "e");
+                var branchProp = Expression.Property(parameter, "BranchId");
+                var currentBranch = Expression.Property(Expression.Constant(this), nameof(CurrentBranchId));
+                var branchEquals = Expression.Equal(branchProp, currentBranch);
 
-                var tenantProp = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
-                var currentTenantExpr = System.Linq.Expressions.Expression.Property(
-                    System.Linq.Expressions.Expression.Constant(this), nameof(CurrentTenantId));
-                var tenantEquals = System.Linq.Expressions.Expression.Equal(tenantProp, currentTenantExpr);
-
-                modelBuilder.Entity(clrType).HasQueryFilter(
-                    System.Linq.Expressions.Expression.Lambda(tenantEquals, parameter));
+                modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(branchEquals, parameter));
             }
-            else if (typeof(IMustHaveTenant).IsAssignableFrom(clrType))
-            {
-                var parameter = System.Linq.Expressions.Expression.Parameter(clrType, "e");
-                var tenantProp = System.Linq.Expressions.Expression.Property(parameter, "TenantId");
-                var currentTenantExpr = System.Linq.Expressions.Expression.Property(
-                    System.Linq.Expressions.Expression.Constant(this), nameof(CurrentTenantId));
-                var equals = System.Linq.Expressions.Expression.Equal(tenantProp, currentTenantExpr);
-                modelBuilder.Entity(clrType).HasQueryFilter(
-                    System.Linq.Expressions.Expression.Lambda(equals, parameter));
-            }
-            // Tenant, Branch, AdminUserTenant → koi filter nahi (IMustHaveTenant implement hi nahi karte)
         }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        if (CurrentTenantId == Guid.Empty)
-        {
-            // ✅ Optional: Log karo for debugging
-            Console.WriteLine($"⚠️ WARNING: CurrentTenantId is empty! Check Finbuckle configuration.");
-
-            // ✅ Throw meaningful error instead of FK constraint error
-            throw new InvalidOperationException(
-                "Tenant context not resolved. Please ensure TenantId header or query parameter is provided.");
-        }
-        // 🔥 Auto-set TenantId
+        // 🔥 Auto-stamp TenantId for IMustHaveTenant entities
         foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
         {
             if (entry.State == EntityState.Added)
+            {
+                if (CurrentTenantId == Guid.Empty)
+                    throw new InvalidOperationException("Tenant context required for adding tenant-scoped entity.");
                 entry.Entity.TenantId = CurrentTenantId;
+            }
+        }
+
+        // 🔥 Auto-stamp BranchId for IMustHaveBranch entities
+        foreach (var entry in ChangeTracker.Entries<IMustHaveBranch>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (CurrentBranchId == Guid.Empty)
+                    throw new InvalidOperationException("Branch context required for adding branch-scoped entity.");
+                entry.Entity.BranchId = CurrentBranchId;
+            }
         }
 
         // 🔥 Auto-set CreatedAt & UpdatedAt
@@ -131,11 +138,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
             if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAt = DateTime.UtcNow;
-                entry.Entity.UpdatedAt = DateTime.UtcNow; // ✅ CREATE par bhi set
+                entry.Entity.UpdatedAt = DateTime.UtcNow;
             }
             else if (entry.State == EntityState.Modified)
             {
-                entry.Entity.UpdatedAt = DateTime.UtcNow; // ✅ UPDATE par set
+                entry.Entity.UpdatedAt = DateTime.UtcNow;
             }
         }
 

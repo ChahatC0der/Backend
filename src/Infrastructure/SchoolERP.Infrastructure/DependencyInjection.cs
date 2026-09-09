@@ -69,6 +69,7 @@ public static class DependencyInjection
         // 🔥 4. TENANT SERVICE (Current Context)
         // ==========================================================
         services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+        services.AddScoped<ICurrentBranchService, CurrentBranchService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         // ==========================================================

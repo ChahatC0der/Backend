@@ -94,6 +94,7 @@ public static class DependencyInjection
         // Add HttpContextAccessor
         services.AddHttpContextAccessor();
 
+
         // Permission service
         services.AddScoped<IPermissionService, PermissionService>();
 
