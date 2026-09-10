@@ -12,16 +12,19 @@ public class GetClassGroupsLightQueryHandler : IRequestHandler<GetClassGroupsLig
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetClassGroupsLightQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+
+    public GetClassGroupsLightQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     public async Task<Result<List<ClassGroupLightResponse>>> Handle(GetClassGroupsLightQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
 
         var items = await _dbContext.Set<ClassGroupEntity>()
             .AsNoTracking()

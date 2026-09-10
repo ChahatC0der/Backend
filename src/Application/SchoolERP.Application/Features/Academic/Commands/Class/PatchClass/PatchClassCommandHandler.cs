@@ -63,17 +63,17 @@ public class PatchClassCommandHandler : IRequestHandler<PatchClassCommand, Resul
 
         classEntity.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Class",
-            Action = "patch",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Class",
+        //    Action = "patch",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(classEntity.Adapt<ClassResponse>());
     }

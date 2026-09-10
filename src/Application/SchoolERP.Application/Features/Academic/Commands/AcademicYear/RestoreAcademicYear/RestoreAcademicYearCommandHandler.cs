@@ -11,21 +11,24 @@ public class RestoreAcademicYearCommandHandler : IRequestHandler<RestoreAcademic
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public RestoreAcademicYearCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;     
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(RestoreAcademicYearCommand command, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var academicYear = await _dbContext.Set<AcademicYearEntity>()
@@ -40,16 +43,16 @@ public class RestoreAcademicYearCommandHandler : IRequestHandler<RestoreAcademic
         academicYear.UpdatedAt = DateTime.UtcNow;
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "AcademicYear",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { academicYear.Id, academicYear.Name }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "AcademicYear",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { academicYear.Id, academicYear.Name }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

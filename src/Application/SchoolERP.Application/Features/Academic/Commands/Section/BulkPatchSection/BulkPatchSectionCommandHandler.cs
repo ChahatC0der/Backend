@@ -13,22 +13,25 @@ public class BulkPatchSectionCommandHandler : IRequestHandler<BulkPatchSectionCo
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public BulkPatchSectionCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(BulkPatchSectionCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         if (request.ClassId.HasValue)
@@ -63,16 +66,16 @@ public class BulkPatchSectionCommandHandler : IRequestHandler<BulkPatchSectionCo
             s.UpdatedAt = DateTime.UtcNow;
         }
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Section",
-            Action = "bulk_patch",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Ids, request.ClassId, request.Name, request.Capacity }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Section",
+        //    Action = "bulk_patch",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Ids, request.ClassId, request.Name, request.Capacity }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

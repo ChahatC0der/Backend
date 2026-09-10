@@ -12,22 +12,25 @@ public class BulkUpdateAcademicYearCommandHandler : IRequestHandler<BulkUpdateAc
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public BulkUpdateAcademicYearCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(BulkUpdateAcademicYearCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         if (request.IsCurrent)
@@ -60,16 +63,16 @@ public class BulkUpdateAcademicYearCommandHandler : IRequestHandler<BulkUpdateAc
         }
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "AcademicYear",
-            Action = "bulk_update",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Ids, request.Name, request.StartDate, request.EndDate, request.IsCurrent, request.Status }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "AcademicYear",
+        //    Action = "bulk_update",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Ids, request.Name, request.StartDate, request.EndDate, request.IsCurrent, request.Status }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

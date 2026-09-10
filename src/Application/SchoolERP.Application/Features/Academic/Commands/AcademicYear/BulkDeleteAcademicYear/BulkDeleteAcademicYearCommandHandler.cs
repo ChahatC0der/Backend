@@ -11,22 +11,25 @@ public class BulkDeleteAcademicYearCommandHandler : IRequestHandler<BulkDeleteAc
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public BulkDeleteAcademicYearCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(BulkDeleteAcademicYearCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var entities = await _dbContext.Set<AcademicYearEntity>()

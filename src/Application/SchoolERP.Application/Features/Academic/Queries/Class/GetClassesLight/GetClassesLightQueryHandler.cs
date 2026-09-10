@@ -12,16 +12,18 @@ public class GetClassesLightQueryHandler : IRequestHandler<GetClassesLightQuery,
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetClassesLightQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+    public GetClassesLightQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     public async Task<Result<List<ClassLightResponse>>> Handle(GetClassesLightQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
 
         var items = await _dbContext.Set<ClassEntity>()
             .AsNoTracking()

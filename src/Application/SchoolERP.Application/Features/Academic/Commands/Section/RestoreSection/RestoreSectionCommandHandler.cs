@@ -11,21 +11,24 @@ public class RestoreSectionCommandHandler : IRequestHandler<RestoreSectionComman
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public RestoreSectionCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(RestoreSectionCommand command, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var section = await _dbContext.Set<SectionEntity>()
@@ -39,16 +42,16 @@ public class RestoreSectionCommandHandler : IRequestHandler<RestoreSectionComman
         section.DeletedAt = null;
         section.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Section",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { section.Id, section.Name }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Section",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { section.Id, section.Name }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

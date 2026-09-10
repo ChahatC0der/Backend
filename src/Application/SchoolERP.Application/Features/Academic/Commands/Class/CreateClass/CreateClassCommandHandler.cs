@@ -15,22 +15,25 @@ public class CreateClassCommandHandler : IRequestHandler<CreateClassCommand, Res
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public CreateClassCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<ClassResponse>> Handle(CreateClassCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         // Check class group if provided
@@ -51,16 +54,16 @@ public class CreateClassCommandHandler : IRequestHandler<CreateClassCommand, Res
         _dbContext.Set<ClassEntity>().Add(classEntity);
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Class",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Name, request.Sequence, request.ClassGroupId, request.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Class",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Name, request.Sequence, request.ClassGroupId, request.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(classEntity.Adapt<ClassResponse>());
     }

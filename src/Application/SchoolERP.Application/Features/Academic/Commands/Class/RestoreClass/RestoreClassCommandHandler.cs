@@ -11,21 +11,24 @@ public class RestoreClassCommandHandler : IRequestHandler<RestoreClassCommand, R
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public RestoreClassCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(RestoreClassCommand command, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var classEntity = await _dbContext.Set<ClassEntity>()
@@ -39,16 +42,16 @@ public class RestoreClassCommandHandler : IRequestHandler<RestoreClassCommand, R
         classEntity.DeletedAt = null;
         classEntity.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Class",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Id, classEntity.Name }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Class",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Id, classEntity.Name }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

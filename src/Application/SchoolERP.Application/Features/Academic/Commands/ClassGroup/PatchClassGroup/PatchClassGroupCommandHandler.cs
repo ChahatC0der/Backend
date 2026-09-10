@@ -14,22 +14,25 @@ public class PatchClassGroupCommandHandler : IRequestHandler<PatchClassGroupComm
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public PatchClassGroupCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<ClassGroupResponse>> Handle(PatchClassGroupCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var entityResult = await _dbContext.GetEntityAsync<ClassGroupEntity>(
@@ -58,17 +61,17 @@ public class PatchClassGroupCommandHandler : IRequestHandler<PatchClassGroupComm
 
         classGroup.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "ClassGroup",
-            Action = "patch",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { classGroup.Name, classGroup.Sequence, classGroup.Description, classGroup.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "ClassGroup",
+        //    Action = "patch",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { classGroup.Name, classGroup.Sequence, classGroup.Description, classGroup.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(classGroup.Adapt<ClassGroupResponse>());
     }

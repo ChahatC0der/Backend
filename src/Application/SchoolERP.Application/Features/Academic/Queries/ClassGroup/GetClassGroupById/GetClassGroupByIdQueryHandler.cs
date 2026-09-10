@@ -12,16 +12,19 @@ public class GetClassGroupByIdQueryHandler : IRequestHandler<GetClassGroupByIdQu
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetClassGroupByIdQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+
+    public GetClassGroupByIdQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     public async Task<Result<ClassGroupResponse>> Handle(GetClassGroupByIdQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
 
         var classGroup = await _dbContext.Set<ClassGroupEntity>()
             .AsNoTracking()

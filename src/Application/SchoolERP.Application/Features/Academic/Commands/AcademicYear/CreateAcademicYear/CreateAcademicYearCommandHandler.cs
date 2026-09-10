@@ -14,22 +14,25 @@ public class CreateAcademicYearCommandHandler : IRequestHandler<CreateAcademicYe
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public CreateAcademicYearCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<AcademicYearResponse>> Handle(CreateAcademicYearCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         // Uniqueness checks using helper
@@ -54,16 +57,16 @@ public class CreateAcademicYearCommandHandler : IRequestHandler<CreateAcademicYe
         _dbContext.Set<AcademicYearEntity>().Add(academicYear);
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "AcademicYear",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Name, request.StartDate, request.EndDate, request.IsCurrent }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "AcademicYear",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Name, request.StartDate, request.EndDate, request.IsCurrent }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(academicYear.Adapt<AcademicYearResponse>());
     }

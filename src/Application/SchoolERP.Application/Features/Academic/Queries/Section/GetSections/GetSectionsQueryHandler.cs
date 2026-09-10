@@ -13,16 +13,18 @@ public class GetSectionsQueryHandler : IRequestHandler<GetSectionsQuery, Result<
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetSectionsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+    public GetSectionsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     public async Task<Result<PagedResponse<SectionResponse>>> Handle(GetSectionsQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var request = query.Request;
 
         var queryable = _dbContext.Set<SectionEntity>()

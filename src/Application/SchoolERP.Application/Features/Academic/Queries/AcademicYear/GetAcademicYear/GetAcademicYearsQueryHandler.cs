@@ -1,8 +1,8 @@
 ﻿using Mapster;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Common.DTOs;
+using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Academic.DTOs;
 using SchoolERP.Domain.Shared.Results;
 using AcademicYearEntity = SchoolERP.Domain.Academic.Entities.AcademicYear;   // ✅ alias
@@ -13,16 +13,19 @@ public class GetAcademicYearsQueryHandler : IRequestHandler<GetAcademicYearsQuer
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetAcademicYearsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+    public GetAcademicYearsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
+        
     }
 
     public async Task<Result<PagedResponse<AcademicYearResponse>>> Handle(GetAcademicYearsQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var request = query.Request;
 
         var queryable = _dbContext.Set<AcademicYearEntity>()

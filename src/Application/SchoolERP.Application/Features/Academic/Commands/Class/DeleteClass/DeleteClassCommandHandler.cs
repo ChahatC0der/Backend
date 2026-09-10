@@ -12,21 +12,24 @@ public class DeleteClassCommandHandler : IRequestHandler<DeleteClassCommand, Res
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public DeleteClassCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<bool>> Handle(DeleteClassCommand command, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var entityResult = await _dbContext.GetEntityAsync<ClassEntity>(
@@ -41,16 +44,16 @@ public class DeleteClassCommandHandler : IRequestHandler<DeleteClassCommand, Res
         classEntity.DeletedAt = DateTime.UtcNow;
         classEntity.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Class",
-            Action = "delete",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Class",
+        //    Action = "delete",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

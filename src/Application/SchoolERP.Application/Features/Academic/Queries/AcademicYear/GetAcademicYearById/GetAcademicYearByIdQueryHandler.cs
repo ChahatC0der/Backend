@@ -12,16 +12,18 @@ public class GetAcademicYearByIdQueryHandler : IRequestHandler<GetAcademicYearBy
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetAcademicYearByIdQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+    public GetAcademicYearByIdQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     public async Task<Result<AcademicYearResponse>> Handle(GetAcademicYearByIdQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
 
         var academicYear = await _dbContext.Set<AcademicYearEntity>()
             .AsNoTracking()

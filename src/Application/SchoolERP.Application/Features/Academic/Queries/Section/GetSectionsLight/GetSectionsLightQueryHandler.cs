@@ -12,16 +12,18 @@ public class GetSectionsLightQueryHandler : IRequestHandler<GetSectionsLightQuer
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
 
-    public GetSectionsLightQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+    public GetSectionsLightQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
     }
 
     public async Task<Result<List<SectionLightResponse>>> Handle(GetSectionsLightQuery query, CancellationToken cancellationToken)
     {
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
 
         var items = await _dbContext.Set<SectionEntity>()
             .AsNoTracking()
