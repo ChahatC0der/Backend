@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Common;
+using SchoolERP.Domain.Student.Entities;
 using SchoolERP.Domain.Rbac.Entities;
 using SchoolERP.Domain.Tenants.Entities;
 using SchoolERP.Infrastructure.Identity;
@@ -32,6 +33,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
     }
 
     // 🔥 Business tables
+    public DbSet<Student> Students => Set<Student>();
+    public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();
+    public DbSet<Parent> Parents => Set<Parent>();
+    public DbSet<StudentDocument> StudentDocuments => Set<StudentDocument>();
+
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<Module> Modules => Set<Module>();
     public DbSet<Permission> Permissions => Set<Permission>();

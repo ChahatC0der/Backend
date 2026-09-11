@@ -11,6 +11,8 @@ using SchoolERP.Infrastructure.Data;
 using SchoolERP.Infrastructure.Identity;
 using SchoolERP.Infrastructure.MultiTenancy;
 using SchoolERP.Infrastructure.Persistence;
+using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Infrastructure.Services;
 using SchoolERP.Infrastructure.Services;
 
 namespace SchoolERP.Infrastructure;
@@ -78,12 +80,14 @@ public static class DependencyInjection
         services.AddScoped<IDbConnectionFactory, SqlConnectionFactory>();
         services.AddScoped(typeof(IDapperRepository<>), typeof(DapperRepository<>));
 
+
         // ==========================================================
         // 🔥 6. CACHING (Tenant-Aware)
         // ==========================================================
         services.AddMemoryCache();
         services.AddScoped<ICacheService, MemoryCacheService>();
 
+        services.AddScoped<IStaffIdGenerator, StaffIdGenerator>();
         services.AddScoped<IExcelExportService, ClosedXmlExportService>();
         return services;
     }
