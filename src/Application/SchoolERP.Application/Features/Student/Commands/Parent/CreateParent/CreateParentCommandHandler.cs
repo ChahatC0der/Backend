@@ -31,7 +31,7 @@ public class CreateParentCommandHandler : IRequestHandler<CreateParentCommand, R
     {
         var request = command.Request;
         var branchId = _branchService.GetBranchId() ?? Guid.Empty;
-        var tenantId = _tenant_service.GetTenantId();
+        var tenantId = _tenantService.GetTenantId();
 
         var student = await _dbContext.Set<StudentEntity>()
             .FirstOrDefaultAsync(s => s.Id == request.StudentId && s.BranchId == branchId && !s.IsDeleted, cancellationToken);

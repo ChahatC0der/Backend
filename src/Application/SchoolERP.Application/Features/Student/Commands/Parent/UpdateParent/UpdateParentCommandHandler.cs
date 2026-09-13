@@ -19,13 +19,13 @@ public class UpdateParentCommandHandler : IRequestHandler<UpdateParentCommand, R
     public UpdateParentCommandHandler(IApplicationDbContext dbContext, ICurrentBranchService branchService)
     {
         _dbContext = dbContext;
-        _branch_service = branchService;
+        _branchService = branchService;
     }
 
     public async Task<Result<ParentResponse>> Handle(UpdateParentCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _branch_service.GetBranchId() ?? Guid.Empty;
+        var branchId = _branchService.GetBranchId() ?? Guid.Empty;
 
         var entityResult = await _dbContext.GetEntityAsync<ParentEntity>(
             p => p.Id == request.Id && !p.IsDeleted,

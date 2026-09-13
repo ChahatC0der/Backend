@@ -88,6 +88,7 @@ public static class DependencyInjection
         services.AddScoped<ICacheService, MemoryCacheService>();
 
         services.AddScoped<IStaffIdGenerator, StaffIdGenerator>();
+        services.AddScoped<IEnrollmentIdGenerator, EnrollmentIdGenerator>();
         services.AddScoped<IExcelExportService, ClosedXmlExportService>();
         return services;
     }

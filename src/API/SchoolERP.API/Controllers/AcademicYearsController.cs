@@ -2,15 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolERP.Application.Common.DTOs;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.BulkDeleteAcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.BulkPatchAcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.BulkUpdateAcademicYear;
 using SchoolERP.Application.Features.Academic.Commands.AcademicYear.CreateAcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.DeleteAcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.PatchAcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.RestoreAcademicYear;
-using SchoolERP.Application.Features.Academic.Commands.AcademicYear.UpdateAcademicYear;
 using SchoolERP.Application.Features.Academic.DTOs;
 using SchoolERP.Application.Features.Academic.Queries.AcademicYear.ExportAcademicYears;
 using SchoolERP.Application.Features.Academic.Queries.AcademicYear.GetAcademicYearById;
