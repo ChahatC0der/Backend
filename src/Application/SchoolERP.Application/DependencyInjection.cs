@@ -3,7 +3,10 @@ using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolERP.Application.Common.Behaviors;
+using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Application.Features.AI.Agent;
 using SchoolERP.Application.Features.AI.Services;
+using SchoolERP.Application.Features.AI.Tools;
 using System.Reflection;
 
 
@@ -33,7 +36,8 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
         services.AddScoped<AiActionValidationService>();
-
+        services.AddScoped<IAiAgent, AiAgent>();
+        services.AddScoped<IAiToolExecutor, AiToolExecutor>();
         return services;
     }
 }

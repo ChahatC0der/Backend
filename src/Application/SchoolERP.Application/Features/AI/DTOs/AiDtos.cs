@@ -80,3 +80,59 @@ public enum AiResponseKind
     Message,
     Action
 }
+
+public sealed record AiAgentRequest
+{
+    public required string Model { get; init; }
+
+    public required IReadOnlyList<AiMessage> Messages { get; init; }
+
+    public int MaxSteps { get; init; } = 5;
+}
+
+public sealed record AiAgentStep
+{
+    public int StepNumber { get; init; }
+
+    public AiAgentStepKind Kind { get; init; }
+
+    public string? Message { get; init; }
+
+    public AiActionProposal? Action { get; init; }
+
+    public AiToolExecutionResult? ToolResult { get; init; }
+}
+
+public enum AiAgentStepKind
+{
+    Message,
+    ActionProposal,
+    ToolResult
+}
+
+public sealed record AiAgentResponse
+{
+    public AiAgentState State { get; init; }
+
+    public string? Message { get; init; }
+
+    public IReadOnlyList<AiAgentStep> Steps { get; init; } = [];
+
+    public AiActionProposal? PendingAction { get; init; }
+}
+
+public enum AiAgentState
+{
+    Planning,
+    WaitingForTool,
+    Completed
+}
+
+public sealed record AiToolExecutionResult
+{
+    public required string ToolName { get; init; }
+
+    public object? Output { get; init; }
+
+    public string? Message { get; init; }
+}
