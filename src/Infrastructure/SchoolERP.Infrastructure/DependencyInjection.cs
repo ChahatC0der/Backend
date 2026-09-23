@@ -1,19 +1,20 @@
-﻿using Finbuckle.MultiTenant;
-using Finbuckle.MultiTenant.AspNetCore.Extensions;
+﻿using Finbuckle.MultiTenant.AspNetCore.Extensions;
 using Finbuckle.MultiTenant.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolERP.Application.Common.Interfaces;
-using SchoolERP.Domain.Tenants.Entities;
+using SchoolERP.Application.Features.AI.Tools;
+using SchoolERP.Infrastructure.AI;
 using SchoolERP.Infrastructure.Data;
 using SchoolERP.Infrastructure.Identity;
 using SchoolERP.Infrastructure.MultiTenancy;
 using SchoolERP.Infrastructure.Persistence;
-using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Infrastructure.Services;
-using SchoolERP.Infrastructure.Services;
+using SchoolERP.Infrastructure.Services.AI.Providers;
+using SchoolERP.Infrastructure.Services.AI.Tools;
+
 
 namespace SchoolERP.Infrastructure;
 
@@ -90,6 +91,37 @@ public static class DependencyInjection
         services.AddScoped<IStaffIdGenerator, StaffIdGenerator>();
         services.AddScoped<IEnrollmentIdGenerator, EnrollmentIdGenerator>();
         services.AddScoped<IExcelExportService, ClosedXmlExportService>();
+
+        services.AddScoped<IAiGateway, AiGateway>();
+
+        services.AddSingleton<IAiToolRegistry>(sp =>
+        {
+            var registry =
+                new InMemoryAiToolRegistry();
+
+            foreach (var tool in AiToolDefinitions.GetAll())
+            {
+                registry.Register(tool);
+            }
+
+            return registry;
+        });
+
+        services.AddSingleton<
+    IAiToolSchemaValidator,
+    JsonSchemaAiToolSchemaValidator>();
+
+        services.AddHttpClient<OpenRouterAiProvider>(client =>
+        {
+            client.BaseAddress = new Uri(
+                configuration["AI:BaseUrl"]
+                ?? "https://openrouter.ai/api/v1/");
+        });
+
+        services.AddScoped<IAiProvider>(
+            sp => sp.GetRequiredService<OpenRouterAiProvider>());
+
+
         return services;
     }
 }

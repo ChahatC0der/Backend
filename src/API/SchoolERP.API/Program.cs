@@ -23,7 +23,7 @@ builder.Host.UseSerilog((context, config) =>
 // 🔥 2. REGISTER ALL LAYERS (CLEAN SEPARATION)
 // ==========================================================
 builder.Services
-    .AddApplication()        // MediatR + FluentValidation
+    .AddApplication(builder.Configuration)        // MediatR + FluentValidation
     .AddInfrastructure(builder.Configuration) // EF, Identity, Dapper, MultiTenant, Cache
     .AddApi(builder.Configuration);          // JWT, RBAC, OpenTelemetry, HealthChecks, Swagger
 

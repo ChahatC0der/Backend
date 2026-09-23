@@ -1,15 +1,17 @@
 ﻿using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
 using SchoolERP.Application.Common.Behaviors;
+using SchoolERP.Application.Features.AI.Services;
 using System.Reflection;
+
 
 namespace SchoolERP.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         // ==========================================================
         // 🔥 MEDIATR (CQRS Pipeline)
@@ -29,6 +31,8 @@ public static class DependencyInjection
         // 🔥 FLUENTVALIDATION (Auto-scan all validators)
         // ==========================================================
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        services.AddScoped<AiActionValidationService>();
 
         return services;
     }

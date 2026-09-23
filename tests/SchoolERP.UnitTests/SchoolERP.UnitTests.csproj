@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Application\SchoolERP.Application\SchoolERP.Application.csproj" />
+    <ProjectReference Include="..\..\src\Infrastructure\SchoolERP.Infrastructure\SchoolERP.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
