@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Application.Features.AI.Services;
 using SchoolERP.Application.Features.AI.Tools;
 using SchoolERP.Infrastructure.AI;
 using SchoolERP.Infrastructure.Data;
@@ -12,6 +13,7 @@ using SchoolERP.Infrastructure.Identity;
 using SchoolERP.Infrastructure.MultiTenancy;
 using SchoolERP.Infrastructure.Persistence;
 using SchoolERP.Infrastructure.Services;
+using SchoolERP.Infrastructure.Services.AI;
 using SchoolERP.Infrastructure.Services.AI.Providers;
 using SchoolERP.Infrastructure.Services.AI.Tools;
 
@@ -120,6 +122,12 @@ public static class DependencyInjection
 
         services.AddScoped<IAiProvider>(
             sp => sp.GetRequiredService<OpenRouterAiProvider>());
+        services.AddScoped<IAiPermissionProvider, HttpAiPermissionProvider>();
+        services.AddScoped<IAiBranchContextProvider, HttpAiBranchContextProvider>();
+        services.AddScoped<IAiExecutionContextAccessor, HttpAiExecutionContextAccessor>();
+
+        services.AddScoped<AiToolScopeAuthorizationService>();
+        services.AddScoped<AiToolAuthorizationService>();
 
 
         return services;

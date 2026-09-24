@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.AI.DTOs;
+using SchoolERP.Application.Features.AI.Services;
 using SchoolERP.Domain.Shared.Results;
 
 namespace SchoolERP.Application.Features.AI.Tools;
@@ -8,11 +9,14 @@ namespace SchoolERP.Application.Features.AI.Tools;
 public sealed class AiToolExecutor : IAiToolExecutor
 {
     private readonly IEnumerable<IAiToolHandler> _handlers;
+    private readonly AiToolAuthorizationService _authorizationService;
 
     public AiToolExecutor(
-        IEnumerable<IAiToolHandler> handlers)
+        IEnumerable<IAiToolHandler> handlers,
+        AiToolAuthorizationService authorizationService)
     {
         _handlers = handlers;
+        _authorizationService = authorizationService;
     }
 
     public async Task<Result<AiToolExecutionResult>> ExecuteAsync(
@@ -23,13 +27,15 @@ public sealed class AiToolExecutor : IAiToolExecutor
         if (tool is null)
         {
             return Result.Failure<AiToolExecutionResult>(
-                Error.Validation("Tool definition is required."));
+                Error.Validation(
+                    "Tool definition is required."));
         }
 
         if (action is null)
         {
             return Result.Failure<AiToolExecutionResult>(
-                Error.Validation("Action proposal is required."));
+                Error.Validation(
+                    "Action proposal is required."));
         }
 
         if (!string.Equals(
@@ -47,6 +53,18 @@ public sealed class AiToolExecutor : IAiToolExecutor
             return Result.Failure<AiToolExecutionResult>(
                 Error.Validation(
                     "Tool definition and action version do not match."));
+        }
+
+        var authorizationResult =
+            _authorizationService.Authorize(tool);
+
+        if (!authorizationResult.IsAllowed)
+        {
+            return Result.Failure<AiToolExecutionResult>(
+                Error.Unauthorized(
+                    string.Join(
+                        " | ",
+                        authorizationResult.Errors)));
         }
 
         var handler = _handlers.FirstOrDefault(x =>

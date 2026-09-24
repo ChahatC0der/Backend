@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<AiActionValidationService>();
         services.AddScoped<IAiAgent, AiAgent>();
         services.AddScoped<IAiToolExecutor, AiToolExecutor>();
+        services.AddScoped<AiToolAuthorizationService>();
         return services;
     }
 }

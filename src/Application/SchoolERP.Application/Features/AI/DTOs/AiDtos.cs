@@ -136,3 +136,18 @@ public sealed record AiToolExecutionResult
 
     public string? Message { get; init; }
 }
+
+public sealed record AiExecutionContext
+{
+    public bool IsAuthenticated { get; init; }
+
+    public Guid? UserId { get; init; }
+
+    public Guid? TenantId { get; init; }
+
+    public Guid? BranchId { get; init; }
+
+    public IReadOnlySet<string> Permissions { get; init; }
+        = new HashSet<string>(
+            StringComparer.OrdinalIgnoreCase);
+}
