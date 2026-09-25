@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using SchoolERP.Application.Features.AI.Confirmation;
+using System.Text.Json;
 
 namespace SchoolERP.Application.Features.AI.DTOs;
 
@@ -135,6 +136,49 @@ public sealed record AiToolExecutionResult
     public object? Output { get; init; }
 
     public string? Message { get; init; }
+
+    public AiToolExecutionStatus Status { get; init; }
+        = AiToolExecutionStatus.Executed;
+
+    public AiConfirmationRequirement? Confirmation { get; init; }
+
+    public bool RequiresConfirmation
+        => Status == AiToolExecutionStatus.ConfirmationRequired;
+
+    public static AiToolExecutionResult Executed(
+        string toolName,
+        object? output = null,
+        string? message = null)
+    {
+        return new AiToolExecutionResult
+        {
+            ToolName = toolName,
+            Output = output,
+            Message = message,
+            Status = AiToolExecutionStatus.Executed,
+            Confirmation = null
+        };
+    }
+
+    public static AiToolExecutionResult ConfirmationRequired(
+        AiConfirmationRequirement requirement)
+    {
+        return new AiToolExecutionResult
+        {
+            ToolName = requirement.ToolName,
+            Output = null,
+            Message =
+                $"Confirmation is required before executing AI tool '{requirement.ToolName}'.",
+            Status = AiToolExecutionStatus.ConfirmationRequired,
+            Confirmation = requirement
+        };
+    }
+}
+
+public enum AiToolExecutionStatus
+{
+    Executed = 1,
+    ConfirmationRequired = 2
 }
 
 public sealed record AiExecutionContext

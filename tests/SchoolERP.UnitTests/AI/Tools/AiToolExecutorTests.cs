@@ -1,414 +1,606 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using FluentAssertions;
 using Moq;
 using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Application.Features.AI.Confirmation;
 using SchoolERP.Application.Features.AI.DTOs;
+using SchoolERP.Application.Features.AI.Risk;
 using SchoolERP.Application.Features.AI.Services;
 using SchoolERP.Application.Features.AI.Tools;
 using SchoolERP.Domain.Shared.Results;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Xunit;
 
 namespace SchoolERP.UnitTests.Features.AI.Tools;
 
 public sealed class AiToolExecutorTests
 {
-    private readonly Mock<IAiExecutionContextAccessor>
-        _contextAccessorMock;
-
-    public AiToolExecutorTests()
-    {
-        _contextAccessorMock =
-            new Mock<IAiExecutionContextAccessor>();
-    }
-
     [Fact]
-    public async Task ExecuteAsync_NullTool_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_tool_is_null()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        var sut = CreateSut(handlerMock.Object);
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var action = CreateAction();
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            null!,
-            action);
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var handler =
+            CreateHandler();
 
-        Assert.Equal(
-            "Validation",
-            result.Error.Code);
+        var executor =
+            CreateExecutor(
+                handler.Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        var result =
+            await executor.ExecuteAsync(
+                null!,
+                CreateAction("GetStudentByAdmissionNumber"));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Message
+            .Should()
+            .Be("Tool definition is required.");
+
+        riskClassifier.Verify(
+            x => x.Classify(It.IsAny<ToolDefinition>()),
+            Times.Never);
+
+        confirmationService.Verify(
+            x => x.CreatePendingAction(
+                It.IsAny<ToolDefinition>(),
+                It.IsAny<AiActionProposal>(),
+                It.IsAny<AiExecutionContext>(),
+                It.IsAny<AiRiskAssessment>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_NullAction_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_action_is_null()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        var tool = CreateTool();
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var sut = CreateSut(handlerMock.Object);
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            null!);
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var executor =
+            CreateExecutor(
+                CreateHandler().Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        Assert.Equal(
-            "Validation",
-            result.Error.Code);
+        var result =
+            await executor.ExecuteAsync(
+                CreateTool(),
+                null!);
 
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        result.IsFailure.Should().BeTrue();
+        result.Error.Message
+            .Should()
+            .Be("Action proposal is required.");
+
+        riskClassifier.Verify(
+            x => x.Classify(It.IsAny<ToolDefinition>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_NameMismatch_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_tool_and_action_names_do_not_match()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        var tool = CreateTool(
-            name: "GetStudent");
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var action = CreateAction(
-            actionName: "DeleteStudent");
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var sut = CreateSut(handlerMock.Object);
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var executor =
+            CreateExecutor(
+                CreateHandler().Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var result =
+            await executor.ExecuteAsync(
+                CreateTool("GetStudentByAdmissionNumber"),
+                CreateAction("DeleteStudent"));
 
-        Assert.Equal(
-            "Validation",
-            result.Error.Code);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Message
+            .Should()
+            .Be("Tool definition and action name do not match.");
 
-        Assert.Contains(
-            "Tool definition and action name do not match.",
-            result.Error.Message);
-
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        riskClassifier.Verify(
+            x => x.Classify(It.IsAny<ToolDefinition>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_VersionMismatch_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_versions_do_not_match()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        var tool = CreateTool(
-            version: 1);
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var action = CreateAction(
-            version: 2);
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var sut = CreateSut(handlerMock.Object);
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var executor =
+            CreateExecutor(
+                CreateHandler().Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var tool =
+            CreateTool(version: 2);
 
-        Assert.Equal(
-            "Validation",
-            result.Error.Code);
+        var action =
+            CreateAction(
+                tool.Name,
+                version: 1);
 
-        Assert.Contains(
-            "Tool definition and action version do not match.",
-            result.Error.Message);
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                action);
 
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        result.IsFailure.Should().BeTrue();
+
+        riskClassifier.Verify(
+            x => x.Classify(It.IsAny<ToolDefinition>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_UnauthenticatedUser_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_user_is_not_authenticated()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(false);
 
-        SetupContext(new AiExecutionContext
-        {
-            IsAuthenticated = false
-        });
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var tool = CreateTool();
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var action = CreateAction();
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        var sut = CreateSut(handlerMock.Object);
+        var executor =
+            CreateExecutor(
+                CreateHandler().Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var tool =
+            CreateTool();
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
 
-        Assert.Equal(
-            "Unauthorized",
-            result.Error.Code);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code
+            .Should()
+            .Be("Unauthorized");
 
-        Assert.Contains(
-            "Authentication is required to use AI tools.",
-            result.Error.Message);
-
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        riskClassifier.Verify(
+            x => x.Classify(It.IsAny<ToolDefinition>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_MissingPermission_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_required_permission_is_missing()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(
+                authenticated: true);
 
-        SetupContext(new AiExecutionContext
-        {
-            IsAuthenticated = true,
-            UserId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
-            BranchId = Guid.NewGuid(),
-            Permissions = new HashSet<string>(
-                new[]
-                {
-                    "student.read"
-                },
-                StringComparer.OrdinalIgnoreCase)
-        });
+        var authorizationService =
+            CreateAuthorizationService(
+                contextAccessor);
 
-        var tool = CreateTool(
-            requiredPermission: "student.update");
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var action = CreateAction();
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        var sut = CreateSut(handlerMock.Object);
+        var executor =
+            CreateExecutor(
+                CreateHandler().Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var tool =
+            CreateTool(
+                requiredPermission:
+                    "Students.Delete");
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
 
-        Assert.Equal(
-            "Unauthorized",
-            result.Error.Code);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code
+            .Should()
+            .Be("Unauthorized");
 
-        Assert.Contains(
-            "Permission 'student.update' is required.",
-            result.Error.Message);
+        riskClassifier.Verify(
+            x => x.Classify(It.IsAny<ToolDefinition>()),
+            Times.Never);
 
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        confirmationService.Verify(
+            x => x.CreatePendingAction(
+                It.IsAny<ToolDefinition>(),
+                It.IsAny<AiActionProposal>(),
+                It.IsAny<AiExecutionContext>(),
+                It.IsAny<AiRiskAssessment>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_MissingTenantScope_DeniesWithoutCallingHandler()
+    public async Task Should_fail_when_risk_classification_fails()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        SetupContext(new AiExecutionContext
-        {
-            IsAuthenticated = true,
-            UserId = Guid.NewGuid(),
-            TenantId = null,
-            BranchId = null,
-            Permissions = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-        });
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var tool = CreateTool(
-            dataScope: AiDataScope.Tenant);
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var action = CreateAction();
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Failure<AiRiskAssessment>(
+                    Error.Validation(
+                        "Risk classification failed.")));
 
-        var sut = CreateSut(handlerMock.Object);
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var executor =
+            CreateExecutor(
+                CreateHandler().Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var tool =
+            CreateTool();
 
-        Assert.Equal(
-            "Unauthorized",
-            result.Error.Code);
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
 
-        Assert.Contains(
-            "Current tenant context is required for tenant-scoped tools.",
-            result.Error.Message);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Message
+            .Should()
+            .Be("Risk classification failed.");
 
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
+        confirmationService.Verify(
+            x => x.CreatePendingAction(
+                It.IsAny<ToolDefinition>(),
+                It.IsAny<AiActionProposal>(),
+                It.IsAny<AiExecutionContext>(),
+                It.IsAny<AiRiskAssessment>()),
             Times.Never);
     }
 
     [Fact]
-    public async Task ExecuteAsync_MissingBranchScope_DeniesWithoutCallingHandler()
+    public async Task Should_create_pending_confirmation_instead_of_executing_handler()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        SetupContext(new AiExecutionContext
-        {
-            IsAuthenticated = true,
-            UserId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
-            BranchId = null,
-            Permissions = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-        });
+        var currentContext =
+            contextAccessor.Object.GetCurrent();
 
-        var tool = CreateTool(
-            dataScope: AiDataScope.Branch);
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var action = CreateAction();
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var sut = CreateSut(handlerMock.Object);
+        var tool =
+            CreateTool(
+                name: "DeleteStudent",
+                riskLevel: AiRiskLevel.High);
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var action =
+            CreateAction(
+                tool.Name,
+                tool.Version);
 
-        // Assert
-        Assert.True(result.IsFailure);
-
-        Assert.Equal(
-            "Unauthorized",
-            result.Error.Code);
-
-        Assert.Contains(
-            "Current branch context is required for branch-scoped tools.",
-            result.Error.Message);
-
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_MissingUserScope_DeniesWithoutCallingHandler()
-    {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
-
-        SetupContext(new AiExecutionContext
-        {
-            IsAuthenticated = true,
-            UserId = null,
-            TenantId = Guid.NewGuid(),
-            BranchId = Guid.NewGuid(),
-            Permissions = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-        });
-
-        var tool = CreateTool(
-            dataScope: AiDataScope.User);
-
-        var action = CreateAction();
-
-        var sut = CreateSut(handlerMock.Object);
-
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
-
-        // Assert
-        Assert.True(result.IsFailure);
-
-        Assert.Equal(
-            "Unauthorized",
-            result.Error.Code);
-
-        Assert.Contains(
-            "Current user context is required for this tool.",
-            result.Error.Message);
-
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_ValidAuthorization_CallsMatchingHandler()
-    {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
-
-        SetupContext(new AiExecutionContext
-        {
-            IsAuthenticated = true,
-            UserId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
-            BranchId = Guid.NewGuid(),
-            Permissions = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-        });
-
-        var arguments =
-            new Dictionary<string, JsonElement>
+        var assessment =
+            new AiRiskAssessment
             {
-                ["admissionNumber"] =
-                    JsonSerializer.SerializeToElement("ADM-001")
+                ToolName = tool.Name,
+                Version = tool.Version,
+                RiskLevel = AiRiskLevel.High,
+                RequiresConfirmation = true,
+                Reasons =
+                [
+                    "High-risk operation."
+                ]
             };
 
-        handlerMock
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Success(assessment));
+
+        var pending =
+            new AiPendingAction
+            {
+                TokenVersion = 1,
+                ConfirmationId = Guid.NewGuid(),
+                ConfirmationToken = "secure-token",
+                ToolName = tool.Name,
+                Version = tool.Version,
+                RiskLevel = AiRiskLevel.High,
+                Arguments = action.Arguments,
+                UserId = currentContext.UserId!.Value,
+                TenantId = currentContext.TenantId!.Value,
+                BranchId = currentContext.BranchId,
+                CreatedAtUtc = DateTimeOffset.UtcNow,
+                ExpiresAtUtc =
+                    DateTimeOffset.UtcNow.AddMinutes(5)
+            };
+
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
+
+        confirmationService
+            .Setup(x => x.CreatePendingAction(
+                It.IsAny<ToolDefinition>(),
+                It.IsAny<AiActionProposal>(),
+                It.IsAny<AiExecutionContext>(),
+                It.IsAny<AiRiskAssessment>()))
+            .Returns(
+                Result.Success(pending));
+
+        var handler =
+            CreateHandler();
+
+        var executor =
+            CreateExecutor(
+                handler.Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
+
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                action);
+
+        result.IsSuccess.Should().BeTrue();
+
+        result.Value!.Status
+            .Should()
+            .Be(AiToolExecutionStatus.ConfirmationRequired);
+
+        result.Value.RequiresConfirmation
+            .Should()
+            .BeTrue();
+
+        result.Value.Confirmation
+            .Should()
+            .NotBeNull();
+
+        result.Value.Confirmation!.ConfirmationId
+            .Should()
+            .Be(pending.ConfirmationId);
+
+        result.Value.Confirmation.ConfirmationToken
+            .Should()
+            .Be("secure-token");
+
+        result.Value.Confirmation.ToolName
+            .Should()
+            .Be(tool.Name);
+
+        result.Value.Confirmation.Version
+            .Should()
+            .Be(tool.Version);
+
+        result.Value.Confirmation.RiskLevel
+            .Should()
+            .Be(AiRiskLevel.High);
+
+        confirmationService.Verify(
+            x => x.CreatePendingAction(
+                It.Is<ToolDefinition>(
+                    t =>
+                        t.Name == tool.Name
+                        && t.Version == tool.Version),
+                It.Is<AiActionProposal>(
+                    a =>
+                        a.ActionName == action.ActionName
+                        && a.Version == action.Version),
+                It.Is<AiExecutionContext>(
+                    c =>
+                        c.UserId == currentContext.UserId
+                        && c.TenantId == currentContext.TenantId
+                        && c.BranchId == currentContext.BranchId),
+                It.Is<AiRiskAssessment>(
+                    r =>
+                        r.ToolName == assessment.ToolName
+                        && r.Version == assessment.Version
+                        && r.RiskLevel == assessment.RiskLevel
+                        && r.RequiresConfirmation)),
+            Times.Once);
+
+        handler.Verify(
+            x => x.ExecuteAsync(
+                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Should_return_failure_when_pending_confirmation_creation_fails()
+    {
+        var contextAccessor =
+            CreateContextAccessor(true);
+
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
+
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
+
+        var tool =
+            CreateTool(
+                name: "DeleteStudent",
+                riskLevel: AiRiskLevel.High);
+
+        var assessment =
+            new AiRiskAssessment
+            {
+                ToolName = tool.Name,
+                Version = tool.Version,
+                RiskLevel = AiRiskLevel.High,
+                RequiresConfirmation = true
+            };
+
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Success(assessment));
+
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
+
+        confirmationService
+            .Setup(x => x.CreatePendingAction(
+                It.IsAny<ToolDefinition>(),
+                It.IsAny<AiActionProposal>(),
+                It.IsAny<AiExecutionContext>(),
+                It.IsAny<AiRiskAssessment>()))
+            .Returns(
+                Result.Failure<AiPendingAction>(
+                    Error.Unauthorized(
+                        "Tenant context could not be established.")));
+
+        var handler =
+            CreateHandler();
+
+        var executor =
+            CreateExecutor(
+                handler.Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
+
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code
+            .Should()
+            .Be("Unauthorized");
+
+        handler.Verify(
+            x => x.ExecuteAsync(
+                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Should_execute_immediate_low_risk_tool_without_confirmation_token()
+    {
+        var contextAccessor =
+            CreateContextAccessor(true);
+
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
+
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
+
+        var tool =
+            CreateTool();
+
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Success(
+                    new AiRiskAssessment
+                    {
+                        ToolName = tool.Name,
+                        Version = tool.Version,
+                        RiskLevel = AiRiskLevel.Low,
+                        RequiresConfirmation = false
+                    }));
+
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
+
+        var handler =
+            CreateHandler();
+
+        handler
             .Setup(x => x.ExecuteAsync(
                 It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
                 It.IsAny<CancellationToken>()))
@@ -416,93 +608,134 @@ public sealed class AiToolExecutorTests
                 Result.Success(
                     new AiToolExecutionResult
                     {
-                        ToolName = "GetStudent",
-                        Output = new
-                        {
-                            Id = 1
-                        },
-                        Message = "Student found."
+                        ToolName = tool.Name,
+                        Output = "student"
                     }));
 
-        var tool = CreateTool(
-            name: "GetStudent");
+        var executor =
+            CreateExecutor(
+                handler.Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        var action = CreateAction(
-            actionName: "GetStudent",
-            arguments: arguments);
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
 
-        var sut = CreateSut(handlerMock.Object);
+        result.IsSuccess.Should().BeTrue();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        result.Value!.Status
+            .Should()
+            .Be(AiToolExecutionStatus.Executed);
 
-        // Assert
-        Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Value);
+        confirmationService.Verify(
+            x => x.CreatePendingAction(
+                It.IsAny<ToolDefinition>(),
+                It.IsAny<AiActionProposal>(),
+                It.IsAny<AiExecutionContext>(),
+                It.IsAny<AiRiskAssessment>()),
+            Times.Never);
 
-        Assert.Equal(
-            "GetStudent",
-            result.Value!.ToolName);
-
-        handlerMock.Verify(
+        handler.Verify(
             x => x.ExecuteAsync(
-                It.Is<IReadOnlyDictionary<string, JsonElement>>(
-                    args =>
-                        args.ContainsKey("admissionNumber")),
+                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task ExecuteAsync_NoMatchingHandler_ReturnsValidationFailure()
+    public async Task Should_fail_when_no_handler_is_registered()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        SetupContext(CreateAuthenticatedContext());
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        var tool = CreateTool(
-            name: "GetStudent");
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
 
-        var action = CreateAction(
-            actionName: "GetStudent");
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Success(
+                    new AiRiskAssessment
+                    {
+                        ToolName =
+                            "GetStudentByAdmissionNumber",
+                        Version = 1,
+                        RiskLevel = AiRiskLevel.Low,
+                        RequiresConfirmation = false
+                    }));
 
-        var sut = CreateSut(handlerMock.Object);
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
 
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
+        var executor =
+            CreateExecutor(
+                Enumerable.Empty<IAiToolHandler>(),
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        // Assert
-        Assert.True(result.IsFailure);
+        var tool =
+            CreateTool();
 
-        Assert.Equal(
-            "Validation",
-            result.Error.Code);
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
 
-        Assert.Contains(
-            "No executor is registered for tool 'GetStudent' version 1.",
-            result.Error.Message);
-
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Message
+            .Should()
+            .Contain("No executor is registered");
     }
 
     [Fact]
-    public async Task ExecuteAsync_HandlerFailure_ReturnsHandlerFailure()
+    public async Task Should_propagate_handler_failure()
     {
-        // Arrange
-        var handlerMock = CreateHandlerMock();
+        var contextAccessor =
+            CreateContextAccessor(true);
 
-        SetupContext(CreateAuthenticatedContext());
+        var authorizationService =
+            CreateAuthorizationService(contextAccessor);
 
-        handlerMock
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
+
+        var tool =
+            CreateTool();
+
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Success(
+                    new AiRiskAssessment
+                    {
+                        ToolName = tool.Name,
+                        Version = tool.Version,
+                        RiskLevel = AiRiskLevel.Low,
+                        RequiresConfirmation = false
+                    }));
+
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
+
+        var handler =
+            CreateHandler();
+
+        handler
             .Setup(x => x.ExecuteAsync(
                 It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
                 It.IsAny<CancellationToken>()))
@@ -511,65 +744,139 @@ public sealed class AiToolExecutorTests
                     Error.Validation(
                         "Tool execution failed.")));
 
-        var tool = CreateTool(
-            name: "GetStudent");
+        var executor =
+            CreateExecutor(
+                handler.Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
 
-        var action = CreateAction(
-            actionName: "GetStudent");
+        var result =
+            await executor.ExecuteAsync(
+                tool,
+                CreateAction(
+                    tool.Name,
+                    tool.Version));
 
-        var sut = CreateSut(handlerMock.Object);
-
-        // Act
-        var result = await sut.ExecuteAsync(
-            tool,
-            action);
-
-        // Assert
-        Assert.True(result.IsFailure);
-
-        Assert.Equal(
-            "Validation",
-            result.Error.Code);
-
-        Assert.Equal(
-            "Tool execution failed.",
-            result.Error.Message);
-
-        handlerMock.Verify(
-            x => x.ExecuteAsync(
-                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
+        result.IsFailure.Should().BeTrue();
+        result.Error.Message
+            .Should()
+            .Be("Tool execution failed.");
     }
 
-    private AiToolExecutor CreateSut(
-        IAiToolHandler handler)
+    [Fact]
+    public async Task Should_pass_cancellation_token_to_handler()
     {
+        var contextAccessor =
+            CreateContextAccessor(true);
+
         var authorizationService =
-            new AiToolAuthorizationService(
-                _contextAccessorMock.Object,
-                new AiToolScopeAuthorizationService(
-                    _contextAccessorMock.Object));
+            CreateAuthorizationService(contextAccessor);
 
+        var riskClassifier =
+            new Mock<IAiRiskClassifier>();
+
+        var tool =
+            CreateTool();
+
+        riskClassifier
+            .Setup(x => x.Classify(
+                It.IsAny<ToolDefinition>()))
+            .Returns(
+                Result.Success(
+                    new AiRiskAssessment
+                    {
+                        ToolName = tool.Name,
+                        Version = tool.Version,
+                        RiskLevel = AiRiskLevel.Low,
+                        RequiresConfirmation = false
+                    }));
+
+        var confirmationService =
+            new Mock<IAiConfirmationTokenService>();
+
+        var handler =
+            CreateHandler();
+
+        var expectedToken =
+            new CancellationTokenSource().Token;
+
+        CancellationToken capturedToken = default;
+
+        handler
+            .Setup(x => x.ExecuteAsync(
+                It.IsAny<IReadOnlyDictionary<string, JsonElement>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<
+                IReadOnlyDictionary<string, JsonElement>,
+                CancellationToken>(
+                (_, token) => capturedToken = token)
+            .ReturnsAsync(
+                Result.Success(
+                    new AiToolExecutionResult
+                    {
+                        ToolName = tool.Name
+                    }));
+
+        var executor =
+            CreateExecutor(
+                handler.Object,
+                authorizationService,
+                riskClassifier.Object,
+                contextAccessor.Object,
+                confirmationService.Object);
+
+        await executor.ExecuteAsync(
+            tool,
+            CreateAction(
+                tool.Name,
+                tool.Version),
+            expectedToken);
+
+        capturedToken
+            .Should()
+            .Be(expectedToken);
+    }
+
+    private static AiToolExecutor CreateExecutor(
+        IAiToolHandler handler,
+        AiToolAuthorizationService authorizationService,
+        IAiRiskClassifier riskClassifier,
+        IAiExecutionContextAccessor contextAccessor,
+        IAiConfirmationTokenService confirmationTokenService)
+    {
         return new AiToolExecutor(
-            new[] { handler },
-            authorizationService);
+            [handler],
+            authorizationService,
+            riskClassifier,
+            contextAccessor,
+            confirmationTokenService);
     }
 
-    private void SetupContext(
-        AiExecutionContext context)
+    private static AiToolExecutor CreateExecutor(
+        IEnumerable<IAiToolHandler> handlers,
+        AiToolAuthorizationService authorizationService,
+        IAiRiskClassifier riskClassifier,
+        IAiExecutionContextAccessor contextAccessor,
+        IAiConfirmationTokenService confirmationTokenService)
     {
-        _contextAccessorMock
-            .Setup(x => x.GetCurrent())
-            .Returns(context);
+        return new AiToolExecutor(
+            handlers,
+            authorizationService,
+            riskClassifier,
+            contextAccessor,
+            confirmationTokenService);
     }
 
-    private static Mock<IAiToolHandler> CreateHandlerMock()
+    private static Mock<IAiToolHandler> CreateHandler()
     {
-        var mock = new Mock<IAiToolHandler>();
+        var mock =
+            new Mock<IAiToolHandler>();
 
         mock.SetupGet(x => x.Name)
-            .Returns("GetStudent");
+            .Returns(
+                "GetStudentByAdmissionNumber");
 
         mock.SetupGet(x => x.Version)
             .Returns(1);
@@ -577,51 +884,107 @@ public sealed class AiToolExecutorTests
         return mock;
     }
 
-    private static AiExecutionContext CreateAuthenticatedContext()
+    private static Mock<IAiExecutionContextAccessor>
+        CreateContextAccessor(
+            bool authenticated)
     {
-        return new AiExecutionContext
-        {
-            IsAuthenticated = true,
-            UserId = Guid.NewGuid(),
-            TenantId = Guid.NewGuid(),
-            BranchId = Guid.NewGuid(),
-            Permissions = new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase)
-        };
+        var context =
+            new AiExecutionContext
+            {
+                IsAuthenticated = authenticated,
+                UserId = authenticated
+                    ? Guid.NewGuid()
+                    : null,
+                TenantId = authenticated
+                    ? Guid.NewGuid()
+                    : null,
+                BranchId = authenticated
+                    ? Guid.NewGuid()
+                    : null,
+                Permissions =
+                    new HashSet<string>(
+                        StringComparer.OrdinalIgnoreCase)
+            };
+
+        var mock =
+            new Mock<IAiExecutionContextAccessor>();
+
+        mock.Setup(x => x.GetCurrent())
+            .Returns(context);
+
+        return mock;
+    }
+
+    private static AiToolAuthorizationService
+    CreateAuthorizationService(
+        Mock<IAiExecutionContextAccessor>
+            contextAccessor)
+    {
+        return new AiToolAuthorizationService(
+            contextAccessor.Object,
+            new AiToolScopeAuthorizationService(
+                contextAccessor.Object));
     }
 
     private static ToolDefinition CreateTool(
-        string name = "GetStudent",
+        string name =
+            "GetStudentByAdmissionNumber",
         int version = 1,
         string? requiredPermission = null,
-        AiDataScope dataScope = AiDataScope.None)
+        AiRiskLevel riskLevel =
+            AiRiskLevel.Low)
     {
         return new ToolDefinition
         {
             Name = name,
-            Description = "Test AI tool.",
+            Description = $"Test tool: {name}",
             Version = version,
-            InputSchema = new JsonObject(),
-            RequiredPermission = requiredPermission,
-            DataScope = dataScope,
-            RiskLevel = AiRiskLevel.Low,
-            ConfirmationPolicy = AiConfirmationPolicy.None,
-            AuditPolicy = AiAuditPolicy.Required
+            InputSchema =
+                new JsonObject
+                {
+                    ["type"] = "object",
+                    ["properties"] =
+                        new JsonObject
+                        {
+                            ["admissionNumber"] =
+                                new JsonObject
+                                {
+                                    ["type"] = "string"
+                                }
+                        },
+                    ["required"] =
+                        new JsonArray(
+                            "admissionNumber"),
+                    ["additionalProperties"] = false
+                },
+            RequiredPermission =
+                requiredPermission,
+            DataScope =
+                AiDataScope.None,
+            RiskLevel =
+                riskLevel,
+            ConfirmationPolicy =
+                AiConfirmationPolicy.None,
+            AuditPolicy =
+                AiAuditPolicy.Required
         };
     }
 
     private static AiActionProposal CreateAction(
-        string actionName = "GetStudent",
-        int version = 1,
-        IReadOnlyDictionary<string, JsonElement>? arguments = null)
+        string actionName,
+        int version = 1)
     {
         return new AiActionProposal
         {
             ActionName = actionName,
             Version = version,
             Arguments =
-                arguments ??
-                new Dictionary<string, JsonElement>()
+                new Dictionary<string, JsonElement>
+                {
+                    ["admissionNumber"] =
+                        JsonSerializer.SerializeToElement(
+                            "ADM-001")
+                }
         };
     }
 }

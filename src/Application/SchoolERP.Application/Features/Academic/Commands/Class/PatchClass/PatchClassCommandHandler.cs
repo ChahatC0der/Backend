@@ -15,22 +15,25 @@ public class PatchClassCommandHandler : IRequestHandler<PatchClassCommand, Resul
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentBranchService _branchService;
     private readonly ICurrentUserService _currentUserService;
 
     public PatchClassCommandHandler(
         IApplicationDbContext dbContext,
         ICurrentTenantService tenantService,
+        ICurrentBranchService branchService,
         ICurrentUserService currentUserService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _branchService = branchService;
         _currentUserService = currentUserService;
     }
 
     public async Task<Result<ClassResponse>> Handle(PatchClassCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
-        var branchId = _tenantService.GetBranchId();
+        var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
         var entityResult = await _dbContext.GetEntityAsync<ClassEntity>(

@@ -3,7 +3,7 @@
 public interface ICurrentTenantService
 {
     Guid GetTenantId();
-    Guid GetBranchId();
+    //Guid GetBranchId();
     string GetTenantName();
     string GetTenantIdentifier();
 }

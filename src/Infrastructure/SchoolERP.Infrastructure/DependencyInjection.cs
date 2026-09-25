@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Application.Features.AI.Confirmation;
 using SchoolERP.Application.Features.AI.Guardrails;
 using SchoolERP.Application.Features.AI.Services;
 using SchoolERP.Application.Features.AI.Tools;
@@ -15,6 +16,7 @@ using SchoolERP.Infrastructure.MultiTenancy;
 using SchoolERP.Infrastructure.Persistence;
 using SchoolERP.Infrastructure.Services;
 using SchoolERP.Infrastructure.Services.AI;
+using SchoolERP.Infrastructure.Services.AI.Confirmation;
 using SchoolERP.Infrastructure.Services.AI.Guardrails;
 using SchoolERP.Infrastructure.Services.AI.Providers;
 using SchoolERP.Infrastructure.Services.AI.Tools;
@@ -140,6 +142,23 @@ public static class DependencyInjection
 
         services.AddScoped<IAiSystemPromptPolicy, AiSystemPromptPolicy>();
 
+        services.AddDataProtection();
+
+        services.Configure<AiConfirmationOptions>(
+            configuration.GetSection(
+                AiConfirmationOptions.SectionName));
+
+        services.AddScoped<
+            IAiConfirmationTokenService,
+            DataProtectionAiConfirmationTokenService>();
+
+        services.AddSingleton<
+    IAiConfirmationTokenStore,
+    InMemoryAiConfirmationTokenStore>();
+
+        services.AddScoped<
+            IAiConfirmationExecutionService,
+            AiConfirmationExecutionService>();
 
         return services;
     }
