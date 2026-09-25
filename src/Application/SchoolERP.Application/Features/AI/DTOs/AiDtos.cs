@@ -151,3 +151,25 @@ public sealed record AiExecutionContext
         = new HashSet<string>(
             StringComparer.OrdinalIgnoreCase);
 }
+
+public sealed record AiGuardrailResult
+{
+    public bool IsAllowed { get; init; }
+
+    public IReadOnlyCollection<string> Reasons { get; init; }
+        = [];
+
+    public static AiGuardrailResult Allowed()
+        => new()
+        {
+            IsAllowed = true
+        };
+
+    public static AiGuardrailResult Blocked(
+        params string[] reasons)
+        => new()
+        {
+            IsAllowed = false,
+            Reasons = reasons
+        };
+}

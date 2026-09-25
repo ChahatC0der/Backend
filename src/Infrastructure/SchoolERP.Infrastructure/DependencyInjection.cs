@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Application.Features.AI.Guardrails;
 using SchoolERP.Application.Features.AI.Services;
 using SchoolERP.Application.Features.AI.Tools;
 using SchoolERP.Infrastructure.AI;
@@ -14,6 +15,7 @@ using SchoolERP.Infrastructure.MultiTenancy;
 using SchoolERP.Infrastructure.Persistence;
 using SchoolERP.Infrastructure.Services;
 using SchoolERP.Infrastructure.Services.AI;
+using SchoolERP.Infrastructure.Services.AI.Guardrails;
 using SchoolERP.Infrastructure.Services.AI.Providers;
 using SchoolERP.Infrastructure.Services.AI.Tools;
 
@@ -128,6 +130,15 @@ public static class DependencyInjection
 
         services.AddScoped<AiToolScopeAuthorizationService>();
         services.AddScoped<AiToolAuthorizationService>();
+
+        services.AddScoped<IAiInputGuardrail, AiMessageTrustBoundaryGuardrail>();
+        services.AddScoped<IAiInputGuardrail, PromptInjectionGuardrail>();
+        services.AddScoped<IAiInputGuardrailService, AiInputGuardrailService>();
+
+        services.AddScoped<IAiOutputGuardrail, AiSensitiveOutputGuardrail>();
+        services.AddScoped<IAiOutputGuardrailService, AiOutputGuardrailService>();
+
+        services.AddScoped<IAiSystemPromptPolicy, AiSystemPromptPolicy>();
 
 
         return services;
