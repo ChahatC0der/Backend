@@ -9,7 +9,6 @@ using SchoolERP.Application.Features.AI.Confirmation;
 using SchoolERP.Application.Features.AI.Guardrails;
 using SchoolERP.Application.Features.AI.Services;
 using SchoolERP.Application.Features.AI.Tools;
-using SchoolERP.Infrastructure.AI;
 using SchoolERP.Infrastructure.Data;
 using SchoolERP.Infrastructure.Identity;
 using SchoolERP.Infrastructure.MultiTenancy;

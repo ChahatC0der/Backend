@@ -8,4 +8,8 @@ public interface IAiAgent
     Task<Result<AiAgentResponse>> RunAsync(
         AiAgentRequest request,
         CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<AiAgentEvent> RunStreamAsync(
+        AiAgentRequest request,
+        CancellationToken cancellationToken = default);
 }

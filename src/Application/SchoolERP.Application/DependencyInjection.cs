@@ -7,6 +7,7 @@ using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.AI.Agent;
 using SchoolERP.Application.Features.AI.Risk;
 using SchoolERP.Application.Features.AI.Services;
+using SchoolERP.Application.Features.AI.Streaming;
 using SchoolERP.Application.Features.AI.Tools;
 using System.Reflection;
 
@@ -42,6 +43,9 @@ public static class DependencyInjection
         services.AddScoped<AiToolAuthorizationService>();
 
         services.AddScoped<IAiRiskClassifier, AiRiskClassifier>();
+
+        services.AddScoped<IAiStreamService, AiStreamService>();
+        services.AddScoped<IAiAgentStreamService, AiAgentStreamService>();
         return services;
     }
 }

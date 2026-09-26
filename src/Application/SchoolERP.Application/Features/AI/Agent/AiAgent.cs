@@ -1,7 +1,10 @@
-﻿using System.Text.Json;
+﻿using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Threading.Channels;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.AI.DTOs;
 using SchoolERP.Application.Features.AI.Services;
+using SchoolERP.Application.Features.AI.Tools;
 using SchoolERP.Domain.Shared.Results;
 
 namespace SchoolERP.Application.Features.AI.Agent;
@@ -22,17 +25,116 @@ public sealed class AiAgent : IAiAgent
         _toolExecutor = toolExecutor;
     }
 
-    public async Task<Result<AiAgentResponse>> RunAsync(
+    public Task<Result<AiAgentResponse>> RunAsync(
         AiAgentRequest request,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return RunInternalAsync(
+            request,
+            publishEvent: null,
+            cancellationToken);
+    }
+
+    public async IAsyncEnumerable<AiAgentEvent> RunStreamAsync(
+        AiAgentRequest request,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var channel = Channel.CreateUnbounded<AiAgentEvent>(
+            new UnboundedChannelOptions
+            {
+                SingleReader = true,
+                SingleWriter = true
+            });
+
+        async ValueTask PublishAsync(
+            AiAgentEvent streamEvent,
+            CancellationToken token)
+        {
+            await channel.Writer.WriteAsync(
+                streamEvent,
+                token);
+        }
+
+        async Task ExecuteAsync()
+        {
+            try
+            {
+                await RunInternalAsync(
+                    request,
+                    PublishAsync,
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                // Client/request cancellation.
+            }
+            catch (Exception)
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    await channel.Writer.WriteAsync(
+                        new AiAgentEvent
+                        {
+                            Type = AiAgentEventType.Error,
+                            Message = "AI agent execution failed."
+                        });
+                }
+            }
+            finally
+            {
+                channel.Writer.TryComplete();
+            }
+        }
+
+        var executionTask = ExecuteAsync();
+
+        try
+        {
+            await foreach (var streamEvent in
+                channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return streamEvent;
+            }
+        }
+        finally
+        {
+            if (!executionTask.IsCompleted)
+            {
+                try
+                {
+                    await executionTask;
+                }
+                catch
+                {
+                    // Exception has already been translated
+                    // into an Error stream event where applicable.
+                }
+            }
+        }
+    }
+
+    private async Task<Result<AiAgentResponse>> RunInternalAsync(
+        AiAgentRequest request,
+        Func<AiAgentEvent, CancellationToken, ValueTask>? publishEvent,
+        CancellationToken cancellationToken)
+    {
         var messages = request.Messages.ToList();
+
         var steps = new List<AiAgentStep>();
 
         for (var planningStep = 1;
              planningStep <= request.MaxSteps;
              planningStep++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var aiResponse = await _aiGateway.ChatAsync(
                 new AiChatRequest
                 {
@@ -46,7 +148,9 @@ public sealed class AiAgent : IAiAgent
                 AiSemanticResponseParser.Parse(
                     aiResponse.Content);
 
-            // AI returned a normal message.
+            /*
+             * AI returned a normal conversational response.
+             */
             if (semanticResponse.ProposedAction is null)
             {
                 var messageStep = new AiAgentStep
@@ -58,6 +162,19 @@ public sealed class AiAgent : IAiAgent
 
                 steps.Add(messageStep);
 
+                await PublishEventAsync(
+                    publishEvent,
+                    new AiAgentEvent
+                    {
+                        Type = AiAgentEventType.MessageCompleted,
+                        Message = semanticResponse.Message,
+                        Data = new
+                        {
+                            State = AiAgentState.Completed
+                        }
+                    },
+                    cancellationToken);
+
                 return Result.Success(
                     new AiAgentResponse
                     {
@@ -67,7 +184,9 @@ public sealed class AiAgent : IAiAgent
                     });
             }
 
-            // AI proposed an action.
+            /*
+             * AI proposed an action.
+             */
             var action = semanticResponse.ProposedAction;
 
             var validationResult =
@@ -75,12 +194,35 @@ public sealed class AiAgent : IAiAgent
 
             if (!validationResult.IsValid)
             {
+                var errorMessage = string.Join(
+                    " | ",
+                    validationResult.Errors);
+
+                await PublishEventAsync(
+                    publishEvent,   
+                    new AiAgentEvent
+                    {
+                        Type = AiAgentEventType.Error,
+                        Message = errorMessage
+                    },
+                    cancellationToken);
+
                 return Result.Failure<AiAgentResponse>(
-                    Error.Validation(
-                        string.Join(
-                            " | ",
-                            validationResult.Errors)));
+                    Error.Validation(errorMessage));
             }
+
+            /*
+             * Tell the client which tool/action was proposed.
+             */
+            await PublishEventAsync(
+                publishEvent,
+                new AiAgentEvent
+                {
+                    Type = AiAgentEventType.ToolProposed,
+                    Data = action,
+                    Message = semanticResponse.Message
+                },
+                cancellationToken);
 
             var actionStep = new AiAgentStep
             {
@@ -92,15 +234,39 @@ public sealed class AiAgent : IAiAgent
 
             steps.Add(actionStep);
 
-            // Execute validated tool.
+            /*
+             * Tool execution started.
+             */
+            await PublishEventAsync(
+                publishEvent,
+                new AiAgentEvent
+                {
+                    Type = AiAgentEventType.ToolExecutionStarted,
+                    Data = new
+                    {
+                        Tool = validationResult.Tool!.Name,
+                        Version = validationResult.Tool.Version
+                    }
+                },
+                cancellationToken);
+
             var executionResult =
                 await _toolExecutor.ExecuteAsync(
-                    validationResult.Tool!,
+                    validationResult.Tool,
                     action,
                     cancellationToken);
 
             if (executionResult.IsFailure)
             {
+                await PublishEventAsync(
+                    publishEvent,
+                    new AiAgentEvent
+                    {
+                        Type = AiAgentEventType.Error,
+                        Data = executionResult.Error
+                    },
+                    cancellationToken);
+
                 return Result.Failure<AiAgentResponse>(
                     executionResult.Error);
             }
@@ -116,7 +282,54 @@ public sealed class AiAgent : IAiAgent
 
             steps.Add(toolStep);
 
-            // Add tool result back to the conversation.
+            /*
+             * IMPORTANT:
+             *
+             * ConfirmationRequired is a terminal state for the
+             * current agent execution.
+             *
+             * Do not continue planning before the user confirms.
+             */
+            if (toolResult.RequiresConfirmation)
+            {
+                await PublishEventAsync(
+                    publishEvent,
+                    new AiAgentEvent
+                    {
+                        Type = AiAgentEventType.ConfirmationRequired,
+                        Data = toolResult,
+                        Message = semanticResponse.Message
+                    },
+                    cancellationToken);
+
+                return Result.Success(
+                    new AiAgentResponse
+                    {
+                        State = AiAgentState.WaitingForTool,
+                        Message = semanticResponse.Message,
+                        Steps = steps
+                    });
+            }
+
+            /*
+             * Tool executed successfully.
+             */
+            await PublishEventAsync(
+                publishEvent,
+                new AiAgentEvent
+                {
+                    Type = AiAgentEventType.ToolExecutionCompleted,
+                    Data = new
+                    {
+                        Tool = toolResult.ToolName,
+                        Message = toolResult.Message
+                    }
+                },
+                cancellationToken);
+
+            /*
+             * Add the tool result to the AI conversation.
+             */
             messages.Add(
                 new AiMessage(
                     AiMessageRole.Tool,
@@ -130,8 +343,34 @@ public sealed class AiAgent : IAiAgent
                         })));
         }
 
+        var maxStepError =
+            $"AI agent reached the maximum step limit of {request.MaxSteps} without completing the task.";
+
+        await PublishEventAsync(
+            publishEvent,
+            new AiAgentEvent
+            {
+                Type = AiAgentEventType.Error,
+                Message = maxStepError
+            },
+            cancellationToken);
+
         return Result.Failure<AiAgentResponse>(
-            Error.Validation(
-                $"AI agent reached the maximum step limit of {request.MaxSteps} without completing the task."));
+            Error.Validation(maxStepError));
     }
+
+    private static ValueTask PublishEventAsync(
+    Func<AiAgentEvent, CancellationToken, ValueTask>? publishEvent,
+    AiAgentEvent streamEvent,
+    CancellationToken cancellationToken)
+{
+    if (publishEvent is null)
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    return publishEvent(
+        streamEvent,
+        cancellationToken);
+}
 }

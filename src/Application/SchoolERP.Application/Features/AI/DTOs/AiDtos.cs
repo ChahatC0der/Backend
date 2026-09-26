@@ -48,13 +48,15 @@ public sealed record AiChatResponse
 
 public sealed record AiStreamChunk
 {
-    public string? ContentDelta { get; init; }
+    public string? Content { get; init; }
+
+    public bool IsCompleted { get; init; }
 
     public string? FinishReason { get; init; }
 
-    public AiUsage? Usage { get; init; }
+    public string? Model { get; init; }
 
-    public IReadOnlyDictionary<string, object?>? Metadata { get; init; }
+    public string? Provider { get; init; }
 }
 
 public sealed record AiActionProposal

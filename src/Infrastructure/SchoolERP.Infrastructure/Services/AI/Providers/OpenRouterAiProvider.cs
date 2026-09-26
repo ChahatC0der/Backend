@@ -132,9 +132,9 @@ public sealed class OpenRouterAiProvider : IAiProvider
     }
 
     public async IAsyncEnumerable<AiStreamChunk> StreamChatAsync(
-        AiChatRequest request,
-        [System.Runtime.CompilerServices.EnumeratorCancellation]
-        CancellationToken cancellationToken = default)
+    AiChatRequest request,
+    [System.Runtime.CompilerServices.EnumeratorCancellation]
+    CancellationToken cancellationToken = default)
     {
         var response = await ChatAsync(
             request,
@@ -142,9 +142,11 @@ public sealed class OpenRouterAiProvider : IAiProvider
 
         yield return new AiStreamChunk
         {
-            ContentDelta = response.Content,
+            Content = response.Content,
+            IsCompleted = true,
             FinishReason = "stop",
-            Usage = response.Usage
+            Model = response.Model,
+            Provider = response.Provider
         };
     }
 }

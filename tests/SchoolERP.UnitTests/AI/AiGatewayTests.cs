@@ -1,114 +1,137 @@
 ﻿using FluentAssertions;
-using Microsoft.Extensions.Options;
-using SchoolERP.Application.AI;
-using SchoolERP.Application.AI.Configuration;
-using SchoolERP.Application.AI.Models;
+using Moq;
 using SchoolERP.Application.Common.Interfaces;
+using SchoolERP.Application.Features.AI.DTOs;
+using SchoolERP.Application.Features.AI.Services;
 
-namespace SchoolERP.Application.Tests.AI;
+namespace SchoolERP.UnitTests.Features.AI;
 
 public sealed class AiGatewayTests
 {
     [Fact]
-    public async Task ChatAsync_Should_Use_Configured_Provider()
+    public async Task StreamChatAsync_should_forward_chunks_from_provider()
     {
-        var provider = new FakeAiProvider();
-
-        var options = Options.Create(
-            new AiOptions
-            {
-                Enabled = true,
-                DefaultProvider = "FakeProvider"
-            });
-
-        var gateway = new AiGateway(
-            [provider],
-            options);
+        var provider = new Mock<IAiProvider>();
 
         var request = new AiChatRequest
         {
             Model = "test-model",
             Messages =
-            [
-                new AiMessage(
-                    AiMessageRole.User,
-                    "Hello")
-            ]
+    [
+        new AiMessage(
+            AiMessageRole.User,
+            "Hello")
+    ]
         };
 
-        var result = await gateway.ChatAsync(request);
+        var chunks = new[]
+        {
+            new AiStreamChunk
+            {
+                Content = "Hello"
+            },
+            new AiStreamChunk
+            {
+                Content = " world"
+            },
+            new AiStreamChunk
+            {
+                IsCompleted = true
+            }
+        };
 
-        result.Content.Should().Be("Fake response");
-        provider.WasCalled.Should().BeTrue();
+        provider
+            .Setup(x => x.StreamChatAsync(
+                request,
+                It.IsAny<CancellationToken>()))
+            .Returns(ToAsyncEnumerable(chunks));
+
+        var gateway = new AiGateway(provider.Object);
+
+        var result = new List<AiStreamChunk>();
+
+        await foreach (var chunk in gateway.StreamChatAsync(request))
+        {
+            result.Add(chunk);
+        }
+
+        result.Should().HaveCount(3);
+
+        result[0].Content.Should().Be("Hello");
+        result[1].Content.Should().Be(" world");
+        result[2].IsCompleted.Should().BeTrue();
+
+        provider.Verify(
+            x => x.StreamChatAsync(
+                request,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
-    public async Task ChatAsync_Should_Reject_When_AI_Is_Disabled()
+    public async Task StreamChatAsync_should_forward_cancellation()
     {
-        var provider = new FakeAiProvider();
-
-        var gateway = new AiGateway(
-            [provider],
-            Options.Create(
-                new AiOptions
-                {
-                    Enabled = false,
-                    DefaultProvider = "FakeProvider"
-                }));
+        var provider = new Mock<IAiProvider>();
 
         var request = new AiChatRequest
         {
             Model = "test-model",
             Messages =
-            [
-                new AiMessage(
-                    AiMessageRole.User,
-                    "Hello")
-            ]
+    [
+        new AiMessage(
+            AiMessageRole.User,
+            "Hello")
+    ]
         };
 
-        var act = () => gateway.ChatAsync(request);
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
 
-        await act.Should()
-            .ThrowAsync<InvalidOperationException>()
-            .WithMessage("AI is currently disabled.");
+        provider
+            .Setup(x => x.StreamChatAsync(
+                request,
+                It.IsAny<CancellationToken>()))
+            .Returns(
+                (AiChatRequest _, CancellationToken ct) =>
+                    CancelledStream(ct));
 
-        provider.WasCalled.Should().BeFalse();
+        var gateway = new AiGateway(provider.Object);
+
+        await FluentActions
+            .Invoking(async () =>
+            {
+                await foreach (var _ in gateway.StreamChatAsync(
+                    request,
+                    cancellationTokenSource.Token))
+                {
+                }
+            })
+            .Should()
+            .ThrowAsync<OperationCanceledException>();
     }
 
-    private sealed class FakeAiProvider : IAiProvider
+    private static async IAsyncEnumerable<AiStreamChunk>
+        ToAsyncEnumerable(
+            IEnumerable<AiStreamChunk> chunks)
     {
-        public string Name => "FakeProvider";
-
-        public bool WasCalled { get; private set; }
-
-        public Task<AiChatResponse> ChatAsync(
-            AiChatRequest request,
-            CancellationToken cancellationToken = default)
+        foreach (var chunk in chunks)
         {
-            WasCalled = true;
-
-            return Task.FromResult(
-                new AiChatResponse
-                {
-                    Content = "Fake response",
-                    Model = request.Model,
-                    Provider = Name
-                });
+            yield return chunk;
+            await Task.Yield();
         }
+    }
 
-        public async IAsyncEnumerable<AiStreamChunk> StreamChatAsync(
-            AiChatRequest request,
+    private static async IAsyncEnumerable<AiStreamChunk>
+        CancelledStream(
             [System.Runtime.CompilerServices.EnumeratorCancellation]
-            CancellationToken cancellationToken = default)
-        {
-            yield return new AiStreamChunk
-            {
-                ContentDelta = "Fake response",
-                FinishReason = "stop"
-            };
+            CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-            await Task.CompletedTask;
-        }
+        await Task.Yield();
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        yield break;
     }
 }
