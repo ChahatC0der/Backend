@@ -29,6 +29,16 @@ builder.Services
 
 // 🔥 3. 🔥🔥 YAHAN ADD KARO 🔥🔥
 builder.Services.AddHostedService<DatabaseHealthCheckService>(); // 👈 YE LINE
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
@@ -42,6 +52,7 @@ app.UseMultiTenant();
 
 // 🔥 Add UseRouting here
 app.UseRouting();
+app.UseCors("Frontend");
 
 if (app.Environment.IsDevelopment())
 {
