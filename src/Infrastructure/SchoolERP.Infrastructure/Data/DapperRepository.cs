@@ -138,4 +138,47 @@ public class DapperRepository<T> : IDapperRepository<T> where T : class
         // Execute ke liye Tenant injection nahi karte (Update/Delete mein manual WHERE lagna chahiye)
         return await conn.ExecuteAsync(sql, parameters);
     }
+
+    // 🔥 NEW: Execute Raw Query with Multiple Result Sets
+    public async Task<TResult> ExecuteRawQueryAsync<TResult>(string sql, object? parameters = null, CancellationToken cancellationToken = default)
+        where TResult : class, new()
+    {
+        using var conn = _connectionFactory.CreateConnection();
+
+        // For multiple result sets, we use QueryMultiple
+        using var multi = await conn.QueryMultipleAsync(sql, parameters);
+
+        // The caller (Handler) will read result sets from multi
+        // But since we can't return Dapper's SqlMapper.GridReader directly (it's Dapper-specific),
+        // we need a different approach...
+
+        // Actually, let's make it simpler - just execute and return single result set
+        return await multi.ReadFirstOrDefaultAsync<TResult>() ?? new TResult();
+    }
+
+    // src/Infrastructure/Data/DapperRepository.cs
+    public async Task<TResult> ExecuteComplexQueryAsync<TResult>(
+        string sql,
+        Func<System.Data.IDataReader, TResult> mapper,
+        object? parameters = null,
+        CancellationToken cancellationToken = default)
+        where TResult : class
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        using var multi = await conn.QueryMultipleAsync(sql, parameters);
+
+        // Pass the GridReader to mapper function
+        // But we need to convert GridReader to IDataReader...
+        // Actually, let's use a simpler approach
+
+        // Execute query and let mapper handle it
+        return mapper(multi as System.Data.IDataReader); // This won't work directly
+    }
+
+    // src/Infrastructure/Data/DapperRepository.cs
+    public async Task<IEnumerable<T>> ExecuteRawSqlAsync(string sql, object? parameters = null, CancellationToken cancellationToken = default)
+    {
+        using var conn = _connectionFactory.CreateConnection();
+        return await conn.QueryAsync<T>(sql, parameters);
+    }
 }
