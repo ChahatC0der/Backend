@@ -46,16 +46,16 @@ public class DeleteMasterItemCommandHandler : IRequestHandler<DeleteMasterItemCo
         item.DeletedAt = DateTime.UtcNow;
         item.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterItem",
-            Action = "delete",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { item.Id, item.Value, item.Code }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterItem",
+        //    Action = "delete",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { item.Id, item.Value, item.Code }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

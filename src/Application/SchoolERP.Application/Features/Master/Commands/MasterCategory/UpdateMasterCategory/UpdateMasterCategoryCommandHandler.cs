@@ -42,12 +42,18 @@ public class UpdateMasterCategoryCommandHandler : IRequestHandler<UpdateMasterCa
         var category = entityResult.Value;
 
         // Check module exists
-        var moduleExists = await _dbContext.EnsureEntityExistsAsync<Module>(request.ModuleId, cancellationToken);
-        if (moduleExists != null) return moduleExists;
+        var moduleNotFound = request.ModuleId != null
+           ? await _dbContext.EnsureEntityExistsAsync<Module>(
+               request.ModuleId.Value,
+               cancellationToken)
+           : null;
+
+        if (moduleNotFound != null)
+            return Error.NotFound("ModuleId", request.ModuleId.ToString());
 
         // Uniqueness check (excluding current)
         var conflict = await _dbContext.EnsureUniqueAsync<MasterCategoryEntity>(
-            mc => mc.ModuleId == request.ModuleId && mc.TenantId == tenantId && mc.Key == request.Key && mc.Id != request.Id && !mc.IsDeleted,
+            mc => mc.TenantId == tenantId && mc.Key == request.Key && mc.Id != request.Id && !mc.IsDeleted,
             $"Master category with key '{request.Key}' already exists.",
             cancellationToken);
         if (conflict != null) return conflict;
@@ -62,17 +68,17 @@ public class UpdateMasterCategoryCommandHandler : IRequestHandler<UpdateMasterCa
         category.IsActive = request.IsActive;
         category.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterCategory",
-            Action = "update",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { category.ModuleId, category.Key, category.Name, category.Description, category.IsSystem, category.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterCategory",
+        //    Action = "update",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { category.ModuleId, category.Key, category.Name, category.Description, category.IsSystem, category.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(category.Adapt<MasterCategoryResponse>());
     }

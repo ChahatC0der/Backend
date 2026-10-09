@@ -43,16 +43,16 @@ public class RestoreMasterItemCommandHandler : IRequestHandler<RestoreMasterItem
         item.DeletedAt = null;
         item.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterItem",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { item.Id, item.Value, item.Code }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterItem",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { item.Id, item.Value, item.Code }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

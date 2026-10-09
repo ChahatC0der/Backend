@@ -45,16 +45,16 @@ public class DeleteMasterCategoryCommandHandler : IRequestHandler<DeleteMasterCa
         category.DeletedAt = DateTime.UtcNow;
         category.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterCategory",
-            Action = "delete",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { category.Id, category.Key, category.Name }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterCategory",
+        //    Action = "delete",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { category.Id, category.Key, category.Name }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

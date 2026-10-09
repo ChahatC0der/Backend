@@ -32,12 +32,17 @@ public class CreateMasterCategoryCommandHandler : IRequestHandler<CreateMasterCa
         var tenantId = _tenantService.GetTenantId();
 
         // Check module exists
-        var moduleExists = await _dbContext.EnsureEntityExistsAsync<Module>(request.ModuleId, cancellationToken);
-        if (moduleExists != null) return moduleExists;
+        var moduleNotFound = request.ModuleId != null
+            ? await _dbContext.EnsureEntityExistsAsync<Module>(
+                request.ModuleId.Value,
+                cancellationToken)
+            : null;
 
+        if (moduleNotFound != null)
+            return Error.NotFound("ModuleId",request.ModuleId.ToString());
         // Uniqueness check (ModuleId, TenantId, Key)
         var conflict = await _dbContext.EnsureUniqueAsync<MasterCategoryEntity>(
-            mc => mc.ModuleId == request.ModuleId && mc.TenantId == tenantId && mc.Key == request.Key && !mc.IsDeleted,
+            mc => mc.TenantId == tenantId && mc.Key == request.Key && !mc.IsDeleted,
             $"Master category with key '{request.Key}' already exists.",
             cancellationToken);
         if (conflict != null) return conflict;
@@ -48,16 +53,16 @@ public class CreateMasterCategoryCommandHandler : IRequestHandler<CreateMasterCa
         _dbContext.Set<MasterCategoryEntity>().Add(category);
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterCategory",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.ModuleId, request.Key, request.Name, request.Description, request.IsSystem, request.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterCategory",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.ModuleId, request.Key, request.Name, request.Description, request.IsSystem, request.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(category.Adapt<MasterCategoryResponse>());
     }

@@ -44,7 +44,7 @@ public class CreateMasterItemCommandHandler : IRequestHandler<CreateMasterItemCo
 
         // Uniqueness (CategoryId, Value)
         var conflict = await _dbContext.EnsureUniqueAsync<MasterItemEntity>(
-            mi => mi.CategoryId == request.CategoryId && mi.Value == request.Value && !mi.IsDeleted,
+            mi => mi.CategoryId == request.CategoryId && (mi.Value == request.Value || mi.Code == request.Code) && !mi.IsDeleted,
             $"Master item '{request.Value}' already exists in this category.",
             cancellationToken);
         if (conflict != null) return conflict;
@@ -53,16 +53,16 @@ public class CreateMasterItemCommandHandler : IRequestHandler<CreateMasterItemCo
         _dbContext.Set<MasterItemEntity>().Add(item);
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterItem",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.CategoryId, request.Value, request.Code, request.Description, request.Metadata, request.SortOrder, request.IsSystem, request.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterItem",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.CategoryId, request.Value, request.Code, request.Description, request.Metadata, request.SortOrder, request.IsSystem, request.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(item.Adapt<MasterItemResponse>());
     }

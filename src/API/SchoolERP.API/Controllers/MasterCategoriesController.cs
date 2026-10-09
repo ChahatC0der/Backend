@@ -42,11 +42,12 @@ public class MasterCategoriesController : BaseApiController
     }
 
     [HttpPost]
+    [Authorize]
     [AllowAnonymous] // TODO: [HasPermission("master_category.create")]
     public async Task<IActionResult> CreateMasterCategory([FromBody] CreateMasterCategoryRequest request)
         => HandleResult(await _mediator.Send(new CreateMasterCategoryCommand(request)));
 
-    [HttpPut("{id:long}")]
+    [HttpPut("{id}")]
     [AllowAnonymous] // TODO: [HasPermission("master_category.update")]
     public async Task<IActionResult> UpdateMasterCategory(long id, [FromBody] UpdateMasterCategoryRequest request)
     {
@@ -54,7 +55,7 @@ public class MasterCategoriesController : BaseApiController
         return HandleResult(await _mediator.Send(new UpdateMasterCategoryCommand(request)));
     }
 
-    [HttpPatch("{id:long}")]
+    [HttpPatch("{id}")]
     [AllowAnonymous] // TODO: [HasPermission("master_category.update")]
     public async Task<IActionResult> PatchMasterCategory(long id, [FromBody] PatchMasterCategoryRequest request)
     {
@@ -62,12 +63,12 @@ public class MasterCategoriesController : BaseApiController
         return HandleResult(await _mediator.Send(new PatchMasterCategoryCommand(request)));
     }
 
-    [HttpDelete("{id:long}")]
+    [HttpDelete("{id}")]
     [AllowAnonymous] // TODO: [HasPermission("master_category.delete")]
     public async Task<IActionResult> DeleteMasterCategory(long id)
         => HandleResult(await _mediator.Send(new DeleteMasterCategoryCommand(id)));
 
-    [HttpPost("{id:long}/restore")]
+    [HttpPost("{id}/restore")]
     [AllowAnonymous] // TODO: [HasPermission("master_category.update")]
     public async Task<IActionResult> RestoreMasterCategory(long id)
         => HandleResult(await _mediator.Send(new RestoreMasterCategoryCommand(id)));

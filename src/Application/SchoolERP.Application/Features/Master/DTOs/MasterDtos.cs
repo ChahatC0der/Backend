@@ -3,7 +3,7 @@
 // ==================== MASTER CATEGORY ====================
 
 public record CreateMasterCategoryRequest(
-    long ModuleId,
+    long? ModuleId,
     string Key,
     string Name,
     string? Description = null,
@@ -13,7 +13,7 @@ public record CreateMasterCategoryRequest(
 
 public record UpdateMasterCategoryRequest(
     long Id,
-    long ModuleId,
+    long? ModuleId,
     string Key,
     string Name,
     string? Description,
@@ -33,7 +33,7 @@ public record PatchMasterCategoryRequest(
 
 public record BulkUpdateMasterCategoryRequest(
     List<long> Ids,
-    long ModuleId,
+    long? ModuleId,
     string Key,
     string Name,
     string? Description,
@@ -55,7 +55,7 @@ public record BulkDeleteMasterCategoryRequest(List<long> Ids);
 
 public record MasterCategoryResponse(
     long Id,
-    long ModuleId,
+    long? ModuleId,
     Guid? TenantId,
     string Key,
     string Name,

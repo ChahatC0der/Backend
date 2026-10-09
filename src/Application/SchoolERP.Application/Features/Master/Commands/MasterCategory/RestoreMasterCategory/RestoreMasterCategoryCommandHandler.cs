@@ -38,16 +38,16 @@ public class RestoreMasterCategoryCommandHandler : IRequestHandler<RestoreMaster
         category.DeletedAt = null;
         category.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterCategory",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { category.Id, category.Key, category.Name }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterCategory",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { category.Id, category.Key, category.Name }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(true);
     }

@@ -43,8 +43,13 @@ public class PatchMasterCategoryCommandHandler : IRequestHandler<PatchMasterCate
 
         if (request.ModuleId.HasValue)
         {
-            var moduleExists = await _dbContext.EnsureEntityExistsAsync<Module>(request.ModuleId.Value, cancellationToken);
-            if (moduleExists != null) return moduleExists;
+            var moduleNotFound = await _dbContext.EnsureEntityExistsAsync<Module>(
+                request.ModuleId.Value,
+                cancellationToken);
+
+            if (moduleNotFound != null)
+                return Error.NotFound("ModuleId", request.ModuleId.Value.ToString());
+
             category.ModuleId = request.ModuleId.Value;
         }
 
@@ -58,7 +63,7 @@ public class PatchMasterCategoryCommandHandler : IRequestHandler<PatchMasterCate
         if (!string.IsNullOrWhiteSpace(request.Key) || request.ModuleId.HasValue)
         {
             var conflict = await _dbContext.EnsureUniqueAsync<MasterCategoryEntity>(
-                mc => mc.ModuleId == category.ModuleId && mc.TenantId == tenantId && mc.Key == category.Key && mc.Id != category.Id && !mc.IsDeleted,
+                mc => mc.TenantId == tenantId && mc.Key == category.Key && mc.Id != category.Id && !mc.IsDeleted,
                 $"Master category with key '{category.Key}' already exists.",
                 cancellationToken);
             if (conflict != null) return conflict;
@@ -66,17 +71,17 @@ public class PatchMasterCategoryCommandHandler : IRequestHandler<PatchMasterCate
 
         category.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterCategory",
-            Action = "patch",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { category.ModuleId, category.Key, category.Name, category.Description, category.IsSystem, category.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterCategory",
+        //    Action = "patch",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { category.ModuleId, category.Key, category.Name, category.Description, category.IsSystem, category.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(category.Adapt<MasterCategoryResponse>());
     }

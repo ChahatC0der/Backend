@@ -14,7 +14,7 @@ public class MasterCategoryConfiguration : IEntityTypeConfiguration<MasterCatego
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        builder.Property(x => x.ModuleId).IsRequired();
+        builder.Property(x => x.ModuleId).IsRequired(false);
         builder.Property(x => x.TenantId).IsRequired(false);     // nullable
         builder.Property(x => x.Key).HasMaxLength(50).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(100).IsRequired();

@@ -67,17 +67,17 @@ public class UpdateMasterItemCommandHandler : IRequestHandler<UpdateMasterItemCo
         item.UpdatedAt = DateTime.UtcNow;
 
         // Audit
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "MasterItem",
-            Action = "update",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { item.CategoryId, item.Value, item.Code, item.Description, item.Metadata, item.SortOrder, item.IsSystem, item.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "MasterItem",
+        //    Action = "update",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { item.CategoryId, item.Value, item.Code, item.Description, item.Metadata, item.SortOrder, item.IsSystem, item.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(item.Adapt<MasterItemResponse>());
     }

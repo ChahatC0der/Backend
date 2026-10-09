@@ -5,7 +5,7 @@ namespace SchoolERP.Domain.Master.Entities;
 
 public class MasterCategory : BaseEntity
 {
-    public long ModuleId { get; set; }
+    public long? ModuleId { get; set; }
     public Guid? TenantId { get; set; }                 // NULL = Global, NOT NULL = Tenant-specific
     public string Key { get; set; } = string.Empty;     // religion, country, fee_head
     public string Name { get; set; } = string.Empty;    // Religions, Countries
