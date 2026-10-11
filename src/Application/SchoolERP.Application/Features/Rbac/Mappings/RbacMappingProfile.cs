@@ -8,6 +8,48 @@ public class RbacMappingProfile : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        // ===== Module =====
+        config.NewConfig<CreateModuleRequest, Module>()
+            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.TenantId)
+            .Ignore(dest => dest.IsSystem)   // only platform admin can set, not via API
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt)
+            .Ignore(dest => dest.IsDeleted)
+            .Ignore(dest => dest.DeletedAt)
+            .Ignore(dest => dest.Parent)
+            .Ignore(dest => dest.Children)
+            .Ignore(dest => dest.Permissions)
+            .Map(dest => dest.Key, src => src.Key.Trim().ToLowerInvariant());
+
+        config.NewConfig<UpdateModuleRequest, Module>()
+            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.TenantId)
+            .Ignore(dest => dest.IsSystem)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt)
+            .Ignore(dest => dest.IsDeleted)
+            .Ignore(dest => dest.DeletedAt)
+            .Ignore(dest => dest.Parent)
+            .Ignore(dest => dest.Children)
+            .Ignore(dest => dest.Permissions)
+            .Map(dest => dest.Key, src => src.Key.Trim().ToLowerInvariant());
+
+        config.NewConfig<PatchModuleRequest, Module>()
+            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.TenantId)
+            .Ignore(dest => dest.IsSystem)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt)
+            .Ignore(dest => dest.IsDeleted)
+            .Ignore(dest => dest.DeletedAt)
+            .Ignore(dest => dest.Parent)
+            .Ignore(dest => dest.Children)
+            .Ignore(dest => dest.Permissions);
+
+        config.NewConfig<Module, ModuleResponse>();
+        config.NewConfig<Module, ModuleLightResponse>();
+
         // ===== Role =====
         config.NewConfig<CreateRoleRequest, Role>()
             .Ignore(dest => dest.Id)
