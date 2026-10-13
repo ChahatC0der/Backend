@@ -51,6 +51,14 @@ public class UpdateClassCommandHandler : IRequestHandler<UpdateClassCommand, Res
             if (groupExists != null) return groupExists;
         }
 
+        // Uniqueness checks using helper
+        var nameConflict = await _dbContext.EnsureUniqueAsync<ClassEntity>(
+            ay => ay.BranchId == branchId && ay.Name == request.Name && ay.Id != request.Id && !ay.IsDeleted,
+            $"Class with name '{request.Name}' already exists.",
+            cancellationToken);
+        if (nameConflict != null) return nameConflict;
+
+
         var conflict = await _dbContext.EnsureUniqueAsync<ClassEntity>(
             c => c.BranchId == branchId && c.Sequence == request.Sequence && c.Id != request.Id && !c.IsDeleted,
             $"Class with sequence '{request.Sequence}' already exists.",
@@ -65,17 +73,17 @@ public class UpdateClassCommandHandler : IRequestHandler<UpdateClassCommand, Res
         classEntity.IsActive = request.IsActive;
         classEntity.UpdatedAt = DateTime.UtcNow;
 
-        var audit = new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = _currentUserService.GetUserId() ?? 0,
-            Resource = "Class",
-            Action = "update",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive }),
-            CreatedAt = DateTime.UtcNow
-        };
-        _dbContext.Set<RbacAuditLog>().Add(audit);
+        //var audit = new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = _currentUserService.GetUserId() ?? 0,
+        //    Resource = "Class",
+        //    Action = "update",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive }),
+        //    CreatedAt = DateTime.UtcNow
+        //};
+        //_dbContext.Set<RbacAuditLog>().Add(audit);
 
         return Result.Success(classEntity.Adapt<ClassResponse>());
     }

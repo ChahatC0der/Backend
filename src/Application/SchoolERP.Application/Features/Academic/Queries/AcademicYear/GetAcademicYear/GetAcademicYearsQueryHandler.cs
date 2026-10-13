@@ -26,11 +26,13 @@ public class GetAcademicYearsQueryHandler : IRequestHandler<GetAcademicYearsQuer
     public async Task<Result<PagedResponse<AcademicYearResponse>>> Handle(GetAcademicYearsQuery query, CancellationToken cancellationToken)
     {
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
         var request = query.Request;
 
         var queryable = _dbContext.Set<AcademicYearEntity>()
             .AsNoTracking()
-            .Where(ay => ay.BranchId == branchId && !ay.IsDeleted);
+            .Where(ay => !ay.IsDeleted);
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {

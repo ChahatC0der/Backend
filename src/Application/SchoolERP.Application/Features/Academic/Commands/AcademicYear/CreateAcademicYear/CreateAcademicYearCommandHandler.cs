@@ -33,6 +33,7 @@ public class CreateAcademicYearCommandHandler : IRequestHandler<CreateAcademicYe
     {
         var request = command.Request;
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
         var tenantId = _tenantService.GetTenantId();
 
         // Uniqueness checks using helper

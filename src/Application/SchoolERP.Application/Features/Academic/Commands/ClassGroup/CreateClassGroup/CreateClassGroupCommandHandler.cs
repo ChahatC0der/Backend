@@ -35,6 +35,13 @@ public class CreateClassGroupCommandHandler : IRequestHandler<CreateClassGroupCo
         var branchId = _branchService.GetBranchId();
         var tenantId = _tenantService.GetTenantId();
 
+        // Uniqueness check for Name
+        var Nameconflict = await _dbContext.EnsureUniqueAsync<ClassGroupEntity>(
+            cg => cg.BranchId == branchId && cg.Name == request.Name && !cg.IsDeleted,
+            $"Class group with Name '{request.Name}' already exists.",
+            cancellationToken);
+        if (Nameconflict != null) return Nameconflict;
+
         // Uniqueness check for sequence
         var conflict = await _dbContext.EnsureUniqueAsync<ClassGroupEntity>(
             cg => cg.BranchId == branchId && cg.Sequence == request.Sequence && !cg.IsDeleted,

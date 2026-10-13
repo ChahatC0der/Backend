@@ -45,6 +45,13 @@ public class UpdateClassGroupCommandHandler : IRequestHandler<UpdateClassGroupCo
 
         var classGroup = entityResult.Value;
 
+        // Uniqueness check for Name
+        var Nameconflict = await _dbContext.EnsureUniqueAsync<ClassGroupEntity>(
+            cg => cg.BranchId == branchId && cg.Name == request.Name && cg.Id != request.Id && !cg.IsDeleted,
+            $"Class group with Name '{request.Name}' already exists.",
+            cancellationToken);
+        if (Nameconflict != null) return Nameconflict;
+
         var conflict = await _dbContext.EnsureUniqueAsync<ClassGroupEntity>(
             cg => cg.BranchId == branchId && cg.Sequence == request.Sequence && cg.Id != request.Id && !cg.IsDeleted,
             $"Class group with sequence '{request.Sequence}' already exists.",

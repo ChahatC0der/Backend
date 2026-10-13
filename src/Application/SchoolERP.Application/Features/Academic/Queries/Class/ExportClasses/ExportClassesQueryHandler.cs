@@ -14,12 +14,14 @@ public class ExportClassesQueryHandler : IRequestHandler<ExportClassesQuery, Res
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentBranchService _branchService;
+    private readonly IExcelExportService _excelExportService;
 
-    public ExportClassesQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
+    public ExportClassesQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService,IExcelExportService excelExportService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
         _branchService = branchService;
+        _excelExportService = excelExportService;
     }
 
     public async Task<Result<byte[]>> Handle(ExportClassesQuery query, CancellationToken cancellationToken)
@@ -33,8 +35,10 @@ public class ExportClassesQueryHandler : IRequestHandler<ExportClassesQuery, Res
             .ProjectToType<ClassLightResponse>()
             .ToListAsync(cancellationToken);
 
-        var csvBytes = items.ToCsv();
+        var excelExport = _excelExportService.Export(items, "Class");
 
-        return Result.Success(csvBytes);
+        //var csvBytes = items.ToCsv();
+
+        return Result.Success(excelExport);
     }
 }

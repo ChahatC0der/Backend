@@ -30,6 +30,8 @@ public class DeleteAcademicYearCommandHandler : IRequestHandler<DeleteAcademicYe
     public async Task<Result<bool>> Handle(DeleteAcademicYearCommand command, CancellationToken cancellationToken)
     {
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
         var tenantId = _tenantService.GetTenantId();
 
         var entityResult = await _dbContext.GetEntityAsync<AcademicYearEntity>(

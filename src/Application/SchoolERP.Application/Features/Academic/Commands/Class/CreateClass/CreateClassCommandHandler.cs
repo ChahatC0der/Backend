@@ -43,6 +43,14 @@ public class CreateClassCommandHandler : IRequestHandler<CreateClassCommand, Res
             if (groupExists != null) return groupExists;
         }
 
+        // Uniqueness checks using helper
+        var nameConflict = await _dbContext.EnsureUniqueAsync<ClassEntity>(
+            ay => ay.BranchId == branchId && ay.Name == request.Name && !ay.IsDeleted,
+            $"Class with name '{request.Name}' already exists.",
+            cancellationToken);
+        if (nameConflict != null) return nameConflict;
+
+
         // Uniqueness check for sequence
         var conflict = await _dbContext.EnsureUniqueAsync<ClassEntity>(
             c => c.BranchId == branchId && c.Sequence == request.Sequence && !c.IsDeleted,

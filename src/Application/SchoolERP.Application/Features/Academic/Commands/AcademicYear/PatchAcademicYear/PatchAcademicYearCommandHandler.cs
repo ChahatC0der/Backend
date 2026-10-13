@@ -33,6 +33,8 @@ public class PatchAcademicYearCommandHandler : IRequestHandler<PatchAcademicYear
     {
         var request = command.Request;
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
         var tenantId = _tenantService.GetTenantId();
 
         var entityResult = await _dbContext.GetEntityAsync<AcademicYearEntity>(

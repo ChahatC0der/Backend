@@ -38,7 +38,12 @@ public class ClassGroupsController : BaseApiController
     {
         var result = await _mediator.Send(new ExportClassGroupsQuery());
         if (result.IsFailure) return HandleResult(result);
-        return File(result.Value, "text/csv", "class_groups.csv");
+        var fileName = $"classgroups_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+
+        return File(
+            result.Value!,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            fileName);
     }
 
     [HttpPost]

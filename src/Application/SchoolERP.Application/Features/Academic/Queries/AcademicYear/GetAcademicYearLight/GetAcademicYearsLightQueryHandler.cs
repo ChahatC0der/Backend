@@ -24,6 +24,8 @@ public class GetAcademicYearsLightQueryHandler : IRequestHandler<GetAcademicYear
     public async Task<Result<List<AcademicYearLightResponse>>> Handle(GetAcademicYearsLightQuery query, CancellationToken cancellationToken)
     {
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
 
         var items = await _dbContext.Set<AcademicYearEntity>()
             .AsNoTracking()

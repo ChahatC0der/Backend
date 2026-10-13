@@ -24,10 +24,12 @@ public class GetAcademicYearByIdQueryHandler : IRequestHandler<GetAcademicYearBy
     public async Task<Result<AcademicYearResponse>> Handle(GetAcademicYearByIdQuery query, CancellationToken cancellationToken)
     {
         var branchId = _branchService.GetBranchId();
+        //if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
 
         var academicYear = await _dbContext.Set<AcademicYearEntity>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(ay => ay.Id == query.Id && ay.BranchId == branchId && !ay.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(ay => ay.Id == query.Id  && !ay.IsDeleted, cancellationToken);
 
         if (academicYear == null)
             return Error.NotFound("AcademicYear", query.Id.ToString());

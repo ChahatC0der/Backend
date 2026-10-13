@@ -234,7 +234,7 @@ public record SectionResponse(
     Guid BranchId,
     long ClassId,
     string Name,
-    int? Capacity,
+    short? Capacity,
     DateTime CreatedAt,
     DateTime? UpdatedAt
 );

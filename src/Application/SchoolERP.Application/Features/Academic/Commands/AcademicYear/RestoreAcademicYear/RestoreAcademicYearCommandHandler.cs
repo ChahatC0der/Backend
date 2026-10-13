@@ -29,6 +29,8 @@ public class RestoreAcademicYearCommandHandler : IRequestHandler<RestoreAcademic
     public async Task<Result<bool>> Handle(RestoreAcademicYearCommand command, CancellationToken cancellationToken)
     {
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
         var tenantId = _tenantService.GetTenantId();
 
         var academicYear = await _dbContext.Set<AcademicYearEntity>()

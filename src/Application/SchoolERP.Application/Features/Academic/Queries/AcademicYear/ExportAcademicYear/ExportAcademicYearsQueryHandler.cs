@@ -14,17 +14,21 @@ public class ExportAcademicYearsQueryHandler : IRequestHandler<ExportAcademicYea
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentBranchService _branchService;
+    private readonly IExcelExportService _excelExportService;
 
-    public ExportAcademicYearsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
+    public ExportAcademicYearsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService, IExcelExportService excelExportService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
         _branchService = branchService;
+        _excelExportService = excelExportService;
     }
 
     public async Task<Result<byte[]>> Handle(ExportAcademicYearsQuery query, CancellationToken cancellationToken)
     {
         var branchId = _branchService.GetBranchId();
+        if (branchId == null) return Error.Conflict("Please Choose a Branch");
+
 
         var items = await _dbContext.Set<AcademicYearEntity>()
             .AsNoTracking()
@@ -33,8 +37,10 @@ public class ExportAcademicYearsQueryHandler : IRequestHandler<ExportAcademicYea
             .ProjectToType<AcademicYearLightResponse>()
             .ToListAsync(cancellationToken);
 
-        var csvBytes = items.ToCsv();
+        var excelExport = _excelExportService.Export(items, "AcademicYears");
 
-        return Result.Success(csvBytes);
+        //var csvBytes = items.ToCsv();
+
+        return Result.Success(excelExport);
     }
 }

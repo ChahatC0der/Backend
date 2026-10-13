@@ -46,7 +46,17 @@ public class PatchClassCommandHandler : IRequestHandler<PatchClassCommand, Resul
         var classEntity = entityResult.Value;
         var oldValues = System.Text.Json.JsonSerializer.Serialize(new { classEntity.Name, classEntity.Sequence, classEntity.ClassGroupId, classEntity.IsActive });
 
+        if(request.Name != null)
+        {
+            // Uniqueness checks using helper
+            var nameConflict = await _dbContext.EnsureUniqueAsync<ClassEntity>(
+                ay => ay.BranchId == branchId && ay.Name == request.Name && !ay.IsDeleted,
+                $"Class with name '{request.Name}' already exists.",
+                cancellationToken);
+            if (nameConflict != null) return nameConflict;
+
         request.Name.PatchIfProvided(value => classEntity.Name = value);
+        }
         if (request.Sequence.HasValue)
         {
             var conflict = await _dbContext.EnsureUniqueAsync<ClassEntity>(

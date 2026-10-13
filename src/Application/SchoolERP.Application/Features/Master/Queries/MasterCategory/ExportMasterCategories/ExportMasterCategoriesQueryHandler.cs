@@ -13,11 +13,13 @@ public class ExportMasterCategoriesQueryHandler : IRequestHandler<ExportMasterCa
 {
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
+    private readonly IExcelExportService _excelExportService;
 
-    public ExportMasterCategoriesQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService)
+    public ExportMasterCategoriesQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService, IExcelExportService excelExportService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
+        _excelExportService = excelExportService;
     }
 
     public async Task<Result<byte[]>> Handle(ExportMasterCategoriesQuery query, CancellationToken cancellationToken)
@@ -31,8 +33,9 @@ public class ExportMasterCategoriesQueryHandler : IRequestHandler<ExportMasterCa
             .ProjectToType<MasterCategoryLightResponse>()
             .ToListAsync(cancellationToken);
 
-        var csvBytes = items.ToCsv();
+        var excelExport = _excelExportService.Export(items,"MasterCategories");
+        //var csvBytes = items.ToCsv();
 
-        return Result.Success(csvBytes);
+        return Result.Success(excelExport);
     }
 }

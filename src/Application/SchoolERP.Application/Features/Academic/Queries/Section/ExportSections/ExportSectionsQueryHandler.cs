@@ -14,12 +14,14 @@ public class ExportSectionsQueryHandler : IRequestHandler<ExportSectionsQuery, R
     private readonly IApplicationDbContext _dbContext;
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentBranchService _branchService;
+    private readonly IExcelExportService _excelExportService;
 
-    public ExportSectionsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService)
+    public ExportSectionsQueryHandler(IApplicationDbContext dbContext, ICurrentTenantService tenantService,ICurrentBranchService branchService,IExcelExportService excelExportService)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
         _branchService = branchService;
+        _excelExportService = excelExportService;
     }
 
     public async Task<Result<byte[]>> Handle(ExportSectionsQuery query, CancellationToken cancellationToken)
@@ -33,8 +35,10 @@ public class ExportSectionsQueryHandler : IRequestHandler<ExportSectionsQuery, R
             .ProjectToType<SectionLightResponse>()
             .ToListAsync(cancellationToken);
 
-        var csvBytes = items.ToCsv();
+        var excelExport = _excelExportService.Export(items, "Section");
 
-        return Result.Success(csvBytes);
+        //var csvBytes = items.ToCsv();
+
+        return Result.Success(excelExport);
     }
 }
