@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Staff.Entities;
 
-public class Staff : BranchEntity
+public class Staff : BranchEntity,IMustHaveTenant
 {
     public Guid TenantId { get; set; }                  // extra column (DDL me hai)
     public long? UserId { get; set; }

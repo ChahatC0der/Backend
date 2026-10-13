@@ -202,28 +202,28 @@ public record UpdateSectionRequest(
     long Id,
     long ClassId,
     string Name,
-    int? Capacity
+    short? Capacity
 );
 
 public record PatchSectionRequest(
     long Id,
     long? ClassId = null,
     string? Name = null,
-    int? Capacity = null
+    short? Capacity = null
 );
 
 public record BulkUpdateSectionRequest(
     List<long> Ids,
     long ClassId,
     string Name,
-    int? Capacity
+    short? Capacity
 );
 
 public record BulkPatchSectionRequest(
     List<long> Ids,
     long? ClassId = null,
     string? Name = null,
-    int? Capacity = null
+    short? Capacity = null
 );
 
 public record BulkDeleteSectionRequest(List<long> Ids);
