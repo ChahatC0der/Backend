@@ -11,7 +11,7 @@ public class AcademicMappingProfile : IRegister
         // ==================== AcademicYear ====================
         config.NewConfig<CreateAcademicYearRequest, AcademicYear>()
             .Ignore(dest => dest.Id)
-            //.Ignore(dest => dest.TenantId)
+            //.Ignore(dest => dest.TenantId)git status
             .Ignore(dest => dest.BranchId)
             .Ignore(dest => dest.CreatedAt)
             .Ignore(dest => dest.UpdatedAt)

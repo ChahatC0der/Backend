@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using StudentEntity = SchoolERP.Domain.Student.Entities.Student;
-using SchoolERP.Domain.Student.Entities;
 using SchoolERP.Infrastructure.Persistence.Configurations.Common;
 
 namespace SchoolERP.Infrastructure.Persistence.Configurations.Student;
@@ -16,6 +15,7 @@ public class StudentConfiguration : BaseBranchOnlyEntityConfiguration<StudentEnt
 
         builder.Property(x => x.TenantId).IsRequired();
         builder.Property(x => x.UserId).IsRequired(false);
+        builder.Property(x => x.FamilyId).IsRequired(false);
 
         builder.Property(x => x.EnrollmentId).HasMaxLength(50).IsRequired();
         builder.HasIndex(x => x.EnrollmentId).IsUnique();
@@ -38,6 +38,14 @@ public class StudentConfiguration : BaseBranchOnlyEntityConfiguration<StudentEnt
         builder.Property(x => x.Status).HasMaxLength(20).IsRequired().HasDefaultValue("enrolled");
         builder.Property(x => x.PhotoUrl).HasMaxLength(500);
         builder.Property(x => x.CustomFields).HasColumnType("nvarchar(max)");
+
+        // 🔥 Family relationship
+        builder.HasOne(x => x.Family)
+            .WithMany(f => f.Students)
+            .HasForeignKey(x => x.FamilyId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(x => x.FamilyId).HasFilter("[FamilyId] IS NOT NULL");
 
         builder.HasIndex(x => new { x.BranchId, x.Status });
         builder.HasIndex(x => x.UserId);

@@ -15,8 +15,9 @@ public class SectionConfiguration : BaseBranchOnlyEntityConfiguration<Section>
 
         builder.Property(x => x.ClassId).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(10).IsRequired();
-        builder.Property(x => x.Capacity).IsRequired(false);
-
+        builder.Property(x => x.Capacity)
+            .HasColumnType("smallint")
+            .IsRequired(false);
         builder.HasOne(x => x.Class)
             .WithMany(c => c.Sections)
             .HasForeignKey(x => x.ClassId)
