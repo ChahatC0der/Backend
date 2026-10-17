@@ -57,16 +57,16 @@ public class RejectRegistrationCommandHandler : IRequestHandler<RejectRegistrati
         reg.RejectionReason = request.RejectionReason;
         reg.UpdatedAt = DateTime.UtcNow;
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "reject",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "rejected", request.RejectionReason }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "reject",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "rejected", request.RejectionReason }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

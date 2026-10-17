@@ -56,15 +56,15 @@ public class RecordInterviewResultCommandHandler : IRequestHandler<RecordIntervi
         reg.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "record_interview_result",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.InterviewResult, request.InterviewFeedback }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "record_interview_result",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.InterviewResult, request.InterviewFeedback }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

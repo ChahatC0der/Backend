@@ -54,15 +54,15 @@ public class ArchiveAlumniCommandHandler : IRequestHandler<ArchiveAlumniCommand,
         alumni.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Alumni",
-            Action = "archive",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { IsArchived = true, command.IsDeceased }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Alumni",
+        //    Action = "archive",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { IsArchived = true, command.IsDeceased }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = alumni.Adapt<AlumniResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

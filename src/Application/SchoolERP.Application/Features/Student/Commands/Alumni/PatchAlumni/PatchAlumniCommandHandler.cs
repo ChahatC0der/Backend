@@ -84,22 +84,22 @@ public class PatchAlumniCommandHandler : IRequestHandler<PatchAlumniCommand, Res
         alumni.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Alumni",
-            Action = "patch",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                alumni.FirstName,
-                alumni.CurrentStatus,
-                alumni.Occupation,
-                alumni.ContactMobile
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Alumni",
+        //    Action = "patch",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        alumni.FirstName,
+        //        alumni.CurrentStatus,
+        //        alumni.Occupation,
+        //        alumni.ContactMobile
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = alumni.Adapt<AlumniResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

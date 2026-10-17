@@ -52,15 +52,15 @@ public class CreateEnquiryFollowupCommandHandler : IRequestHandler<CreateEnquiry
 
         _dbContext.Set<EnquiryFollowupEntity>().Add(followup);
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "EnquiryFollowup",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.EnquiryId, request.ActivityType, request.NextFollowupDate }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "EnquiryFollowup",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.EnquiryId, request.ActivityType, request.NextFollowupDate }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(followup.Adapt<EnquiryFollowupResponse>());
     }

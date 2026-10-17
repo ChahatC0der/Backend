@@ -58,16 +58,16 @@ public class CancelAdmissionCommandHandler : IRequestHandler<CancelAdmissionComm
         admission.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Admission",
-            Action = "cancel",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "cancelled", Reason = request.Reason }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Admission",
+        //    Action = "cancel",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "cancelled", Reason = request.Reason }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = admission.Adapt<AdmissionResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

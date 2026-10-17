@@ -54,16 +54,16 @@ public class SubmitRegistrationCommandHandler : IRequestHandler<SubmitRegistrati
         reg.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "submit",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "submitted" }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "submit",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "submitted" }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

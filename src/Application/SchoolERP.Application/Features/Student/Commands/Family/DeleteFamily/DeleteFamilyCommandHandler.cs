@@ -54,15 +54,15 @@ public class DeleteFamilyCommandHandler : IRequestHandler<DeleteFamilyCommand, R
         family.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Family",
-            Action = "delete",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { family.HeadName, family.HeadMobile }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Family",
+        //    Action = "delete",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { family.HeadName, family.HeadMobile }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(true);
     }

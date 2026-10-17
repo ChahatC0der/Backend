@@ -46,15 +46,15 @@ public class RestoreEnquiryCommandHandler : IRequestHandler<RestoreEnquiryComman
         enquiry.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Enquiry",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { enquiry.Id, enquiry.ParentName }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Enquiry",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { enquiry.Id, enquiry.ParentName }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(true);
     }

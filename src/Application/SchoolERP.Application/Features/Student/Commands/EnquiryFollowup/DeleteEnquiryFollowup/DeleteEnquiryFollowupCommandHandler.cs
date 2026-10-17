@@ -51,15 +51,15 @@ public class DeleteEnquiryFollowupCommandHandler : IRequestHandler<DeleteEnquiry
         followup.DeletedAt = DateTime.UtcNow;
         followup.UpdatedAt = DateTime.UtcNow;
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "EnquiryFollowup",
-            Action = "delete",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { followup.EnquiryId, followup.ActivityType, followup.Notes }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "EnquiryFollowup",
+        //    Action = "delete",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { followup.EnquiryId, followup.ActivityType, followup.Notes }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(true);
     }

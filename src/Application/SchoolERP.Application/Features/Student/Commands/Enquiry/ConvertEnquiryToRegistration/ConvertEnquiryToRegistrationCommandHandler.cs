@@ -60,27 +60,27 @@ public class ConvertEnquiryToRegistrationCommandHandler : IRequestHandler<Conver
         enquiry.Status = "converted";
         enquiry.UpdatedAt = DateTime.UtcNow;
 
-        _dbContext.Set<EnquiryStatusLogEntity>().Add(new EnquiryStatusLogEntity
-        {
-            EnquiryId = enquiry.Id,
-            OldStatus = oldStatus,
-            NewStatus = "converted",
-            Reason = "Converted to registration",
-            PerformedBy = userId
-        });
+        //_dbContext.Set<EnquiryStatusLogEntity>().Add(new EnquiryStatusLogEntity
+        //{
+        //    EnquiryId = enquiry.Id,
+        //    OldStatus = oldStatus,
+        //    NewStatus = "converted",
+        //    Reason = "Converted to registration",
+        //    PerformedBy = userId
+        //});
 
         // TODO: Create Registration entity — set enquiry.ConvertedToRegistrationId
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Enquiry",
-            Action = "convert",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "converted", request.AcademicYearId, request.ClassId, request.SectionId }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Enquiry",
+        //    Action = "convert",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "converted", request.AcademicYearId, request.ClassId, request.SectionId }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = enquiry.Adapt<EnquiryResponse>();
 

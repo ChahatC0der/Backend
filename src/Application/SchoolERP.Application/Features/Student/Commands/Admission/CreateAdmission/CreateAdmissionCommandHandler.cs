@@ -90,21 +90,21 @@ public class CreateAdmissionCommandHandler : IRequestHandler<CreateAdmissionComm
 
         _dbContext.Set<AdmissionEntity>().Add(admission);
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Admission",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                admission.RegistrationId,
-                admission.EnquiryId,
-                admission.ClassId,
-                admission.SectionId
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Admission",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        admission.RegistrationId,
+        //        admission.EnquiryId,
+        //        admission.ClassId,
+        //        admission.SectionId
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = admission.Adapt<AdmissionResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

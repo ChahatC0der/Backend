@@ -82,20 +82,20 @@ public class ConvertStudentToAlumniCommandHandler : IRequestHandler<ConvertStude
         student.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Alumni",
-            Action = "convert_from_student",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                alumni.AlumniId,
-                StudentId = student.Id,
-                request.GraduationDate
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Alumni",
+        //    Action = "convert_from_student",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        alumni.AlumniId,
+        //        StudentId = student.Id,
+        //        request.GraduationDate
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = alumni.Adapt<AlumniResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

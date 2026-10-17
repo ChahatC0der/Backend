@@ -1,0 +1,319 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+@baseUrl = http://demo.localhost:5249
+@tenantId = 4254CD42-6F0B-4418-926C-3593412A374F
+@branchId = 45B7DD97-D3BB-F111-8584-E0D55E5FDD5F
+@classId = 1
+@sectionId = 1
+@academicYearId = 10002
+@counselorId = 1004
+
+###############################################################################
+# PHASE 0: LOGIN
+###############################################################################
+
+### Login
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "request": {
+    "email": "superadmin@example.com",
+    "password": "Admin@123"
+  }
+}
+
+
+###############################################################################
+# PHASE 1: ENQUIRY
+###############################################################################
+
+### 1. Create Enquiry
+# @name createEnquiry
+POST {{baseUrl}}/api/enquiries
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "source": "walkin",
+  "parentName": "Rajesh Sharma",
+  "mobile": "9876543210",
+  "studentFirstName": "Aarav",
+  "studentLastName": "Sharma",
+  "email": "rajesh@example.com",
+  "classId": {{classId}},
+  "message": "Interested in admission"
+}
+
+@enquiryId = {{createEnquiry.response.body.$.data.id}}
+
+### 2. Get Enquiries (Paged)
+GET {{baseUrl}}/api/enquiries?page=1&size=10
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+### 3. Get Enquiry By ID
+GET {{baseUrl}}/api/enquiries/{{enquiryId}}
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+### 4. Add Followup
+POST {{baseUrl}}/api/enquiry-followups
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "enquiryId": {{enquiryId}},
+  "activityType": "call",
+  "notes": "Called, parent interested",
+  "nextFollowupDate": "2026-10-20"
+}
+
+### 5. Assign Counselor
+POST {{baseUrl}}/api/enquiries/{{enquiryId}}/assign
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{enquiryId}},
+  "assignedTo": {{counselorId}}
+}
+
+### 6. Change Status
+POST {{baseUrl}}/api/enquiries/{{enquiryId}}/change-status
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{enquiryId}},
+  "newStatus": "contacted",
+  "reason": "First call done"
+}
+
+###############################################################################
+# PHASE 2: REGISTRATION
+###############################################################################
+
+### 7. Create Registration
+# @name createReg
+POST {{baseUrl}}/api/registrations
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "academicYearId": {{academicYearId}},
+  "classId": {{classId}},
+  "sectionId": {{sectionId}},
+  "enquiryId": {{enquiryId}},
+  "studentFirstName": "Aarav",
+  "studentLastName": "Sharma",
+  "dateOfBirth": "2019-05-15",
+  "gender": "male",
+  "parentPrimaryMobile": "9876543210",
+  "fatherName": "Rajesh Sharma",
+  "fatherMobile": "9876543210",
+  "fatherEmail": "rajesh@example.com",
+  "motherName": "Priya Sharma",
+  "motherMobile": "9876543211",
+  "parentPrimaryEmail": "rajesh@example.com",
+  "presentAddress": "123 Main Street",
+  "isPermanentSame": true
+}
+
+@registrationId = {{createReg.response.body.$.data.id}}
+
+### 8. Upload Registration Document
+# @name createDoc
+POST {{baseUrl}}/api/registration-documents
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "registrationId": {{registrationId}},
+  "documentType": "birth_certificate",
+  "fileUrl": "https://dummy/birth.pdf",
+  "description": "Birth certificate"
+}
+
+@docId = {{createDoc.response.body.$.data.id}}
+
+### 9. Verify Registration Document
+POST {{baseUrl}}/api/registration-documents/{{docId}}/verify
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{docId}},
+  "verified": true
+}
+
+### 10. Submit Registration
+POST {{baseUrl}}/api/registrations/{{registrationId}}/submit
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{ "id": {{registrationId}} }
+
+### 11. Start Review
+POST {{baseUrl}}/api/registrations/{{registrationId}}/start-review
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{ "id": {{registrationId}} }
+
+### 12. Approve Registration
+POST {{baseUrl}}/api/registrations/{{registrationId}}/approve
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{ "id": {{registrationId}} }
+
+###############################################################################
+# PHASE 3: ADMISSION + ENROLL
+###############################################################################
+
+### 13. Create Admission
+# @name createAdm
+POST {{baseUrl}}/api/admissions
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "academicYearId": {{academicYearId}},
+  "classId": {{classId}},
+  "sectionId": {{sectionId}},
+  "registrationId": {{registrationId}},
+  "admissionDate": "2026-10-17",
+  "rollNumber": "1-A-01"
+}
+
+@admissionId = {{createAdm.response.body.$.data.id}}
+
+### 14. Collect First Fee
+POST {{baseUrl}}/api/admissions/{{admissionId}}/collect-fee
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{admissionId}},
+  "amount": 5000,
+  "paymentMode": "offline",
+  "paymentDate": "2026-10-17"
+}
+
+### 15. Enroll Now
+# @name enroll
+POST {{baseUrl}}/api/admissions/{{admissionId}}/enroll
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{admissionId}},
+  "rollNumber": "1-A-01",
+  "joiningDate": "2026-10-17"
+}
+
+@studentId = {{enroll.response.body.$.data.studentId}}
+@enrollmentId = {{enroll.response.body.$.data.enrollmentId}}
+
+###############################################################################
+# PHASE 4: STUDENT VERIFY
+###############################################################################
+
+### 16. Get Student By ID
+GET {{baseUrl}}/api/students/{{studentId}}
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+### 17. Get Student Enrollments
+GET {{baseUrl}}/api/student-enrollments?studentId={{studentId}}&page=1&size=10
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+### 18. Get Student Parents
+GET {{baseUrl}}/api/parents?studentId={{studentId}}&page=1&size=10
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+### 19. Upload Student Document
+POST {{baseUrl}}/api/student-documents
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "studentId": {{studentId}},
+  "documentType": "aadhar",
+  "fileUrl": "https://dummy/aadhar.pdf",
+  "description": "Aadhar card"
+}
+
+### 20. Patch Student
+PATCH {{baseUrl}}/api/students/{{studentId}}
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{studentId}},
+  "bloodGroup": "O+"
+}
+
+###############################################################################
+# PHASE 5: ALUMNI
+###############################################################################
+
+### 21. Convert Student to Alumni
+# @name createAlumni
+POST {{baseUrl}}/api/alumni/convert-from-student
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "studentId": {{studentId}},
+  "graduationDate": "2026-03-31",
+  "lastClassId": {{classId}},
+  "passingAcademicYearId": {{academicYearId}},
+  "finalPercentage": 85.5
+}
+
+@alumniId = {{createAlumni.response.body.$.data.id}}
+
+### 22. Update Alumni Profile
+POST {{baseUrl}}/api/alumni/{{alumniId}}/update-profile
+Content-Type: application/json
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+{
+  "id": {{alumniId}},
+  "occupation": "Software Engineer",
+  "companyName": "Google",
+  "industry": "IT"
+}
+
+### 23. Get Alumni List
+GET {{baseUrl}}/api/alumni?page=1&size=10
+TenantId: {{tenantId}}
+BranchId: {{branchId}}
+
+### 24. Archive Alumni
+POST {{baseUrl}}/api/alumni/{{alumniId}}/archive?isDeceased=false
+TenantId: {{tenantId}}
+BranchId: {{branchId}}

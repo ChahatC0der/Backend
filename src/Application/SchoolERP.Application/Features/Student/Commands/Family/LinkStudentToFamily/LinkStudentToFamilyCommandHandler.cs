@@ -54,15 +54,15 @@ public class LinkStudentToFamilyCommandHandler : IRequestHandler<LinkStudentToFa
         student.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Family",
-            Action = "link_student",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { FamilyId = family.Id, StudentId = student.Id }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Family",
+        //    Action = "link_student",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { FamilyId = family.Id, StudentId = student.Id }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(family.Adapt<FamilyResponse>());
     }

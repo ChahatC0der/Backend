@@ -57,25 +57,25 @@ public class ChangeEnquiryStatusCommandHandler : IRequestHandler<ChangeEnquirySt
 
         var userId = _currentUserService.GetUserId() ?? 0;
 
-        _dbContext.Set<EnquiryStatusLogEntity>().Add(new EnquiryStatusLogEntity
-        {
-            EnquiryId = enquiry.Id,
-            OldStatus = oldStatus,
-            NewStatus = request.NewStatus,
-            Reason = request.Reason,
-            PerformedBy = userId
-        });
+        //_dbContext.Set<EnquiryStatusLogEntity>().Add(new EnquiryStatusLogEntity
+        //{
+        //    EnquiryId = enquiry.Id,
+        //    OldStatus = oldStatus,
+        //    NewStatus = request.NewStatus,
+        //    Reason = request.Reason,
+        //    PerformedBy = userId
+        //});
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Enquiry",
-            Action = "status_change",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = request.NewStatus, Reason = request.Reason }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Enquiry",
+        //    Action = "status_change",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = request.NewStatus, Reason = request.Reason }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = enquiry.Adapt<EnquiryResponse>();
 

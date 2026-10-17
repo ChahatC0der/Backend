@@ -53,15 +53,15 @@ public class UnlinkStudentFromFamilyCommandHandler : IRequestHandler<UnlinkStude
         student.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Family",
-            Action = "unlink_student",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { FamilyId = family.Id, StudentId = student.Id }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Family",
+        //    Action = "unlink_student",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { FamilyId = family.Id, StudentId = student.Id }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         // Remove from navigation to reflect count
         family.Students.Remove(student);

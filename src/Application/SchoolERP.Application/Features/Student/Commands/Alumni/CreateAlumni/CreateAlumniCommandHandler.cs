@@ -60,20 +60,20 @@ public class CreateAlumniCommandHandler : IRequestHandler<CreateAlumniCommand, R
         _dbContext.Set<AlumniEntity>().Add(alumni);
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Alumni",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                alumni.AlumniId,
-                alumni.FirstName,
-                alumni.GraduationDate
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Alumni",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        alumni.AlumniId,
+        //        alumni.FirstName,
+        //        alumni.GraduationDate
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = alumni.Adapt<AlumniResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

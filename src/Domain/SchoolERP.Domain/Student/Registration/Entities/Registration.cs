@@ -4,7 +4,7 @@ namespace SchoolERP.Domain.Student.Registration.Entities;
 
 public class Registration : BranchEntity
 {
-    public Guid TenantId { get; set; }
+    //public Guid TenantId { get; set; }
     public long AcademicYearId { get; set; }
     public long? EnquiryId { get; set; }
 

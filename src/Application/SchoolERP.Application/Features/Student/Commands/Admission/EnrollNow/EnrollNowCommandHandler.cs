@@ -286,21 +286,21 @@ public class EnrollNowCommandHandler : IRequestHandler<EnrollNowCommand, Result<
         }
 
         // 9) Audit log
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Admission",
-            Action = "enroll",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                EnrollmentId = enrollmentId,
-                StudentId = student.Id,
-                ClassId = admission.ClassId,
-                SectionId = admission.SectionId
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Admission",
+        //    Action = "enroll",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        EnrollmentId = enrollmentId,
+        //        StudentId = student.Id,
+        //        ClassId = admission.ClassId,
+        //        SectionId = admission.SectionId
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = admission.Adapt<AdmissionResponse>();
         return Result.Success(await FillComputedAsync(response, student.Id, enrollmentId, cancellationToken));

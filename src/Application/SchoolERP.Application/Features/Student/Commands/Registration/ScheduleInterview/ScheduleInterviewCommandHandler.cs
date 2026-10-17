@@ -62,16 +62,16 @@ public class ScheduleInterviewCommandHandler : IRequestHandler<ScheduleInterview
         reg.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "schedule_interview",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "interview_scheduled", request.InterviewDate, request.InterviewMode, request.InterviewerId }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "schedule_interview",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "interview_scheduled", request.InterviewDate, request.InterviewMode, request.InterviewerId }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

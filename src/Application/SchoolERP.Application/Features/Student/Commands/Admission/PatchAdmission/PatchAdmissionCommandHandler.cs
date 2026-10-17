@@ -71,21 +71,21 @@ public class PatchAdmissionCommandHandler : IRequestHandler<PatchAdmissionComman
         admission.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Admission",
-            Action = "patch",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                admission.ClassId,
-                admission.SectionId,
-                admission.RollNumber
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Admission",
+        //    Action = "patch",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        admission.ClassId,
+        //        admission.SectionId,
+        //        admission.RollNumber
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = admission.Adapt<AdmissionResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

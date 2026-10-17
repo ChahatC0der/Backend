@@ -54,16 +54,16 @@ public class StartRegistrationReviewCommandHandler : IRequestHandler<StartRegist
         reg.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "start_review",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "under_review" }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "start_review",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Status = "under_review" }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

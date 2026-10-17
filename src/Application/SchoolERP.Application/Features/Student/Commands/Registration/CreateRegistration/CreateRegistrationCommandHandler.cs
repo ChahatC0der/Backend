@@ -55,27 +55,27 @@ public class CreateRegistrationCommandHandler : IRequestHandler<CreateRegistrati
         }
 
         var registration = request.Adapt<RegistrationEntity>();
-        registration.TenantId = tenantId;
+        //registration.TenantId = tenantId;
         registration.RegistrationNumber = await GenerateRegistrationNumberAsync(branchId.Value, cancellationToken);
         registration.Status = "draft";
 
         _dbContext.Set<RegistrationEntity>().Add(registration);
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                registration.RegistrationNumber,
-                registration.StudentFirstName,
-                registration.ParentPrimaryMobile
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        registration.RegistrationNumber,
+        //        registration.StudentFirstName,
+        //        registration.ParentPrimaryMobile
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = registration.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

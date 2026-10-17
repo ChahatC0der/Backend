@@ -13,7 +13,7 @@ public class AdmissionConfiguration : BaseBranchOnlyEntityConfiguration<Admissio
 
         builder.ToTable("Admissions");
 
-        builder.Property(x => x.TenantId).IsRequired();
+        //builder.Property(x => x.TenantId).IsRequired();
         builder.Property(x => x.AdmissionNumber).HasMaxLength(50);
         builder.Property(x => x.RollNumber).HasMaxLength(20);
         builder.Property(x => x.PreviousSchool).HasMaxLength(255);

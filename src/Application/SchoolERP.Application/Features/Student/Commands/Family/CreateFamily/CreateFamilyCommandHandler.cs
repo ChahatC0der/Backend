@@ -41,15 +41,15 @@ public class CreateFamilyCommandHandler : IRequestHandler<CreateFamilyCommand, R
         _dbContext.Set<FamilyEntity>().Add(family);
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Family",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { family.HeadName, family.HeadMobile }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Family",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { family.HeadName, family.HeadMobile }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(family.Adapt<FamilyResponse>());
     }

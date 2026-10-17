@@ -57,15 +57,15 @@ public class RecordRegistrationFeeCommandHandler : IRequestHandler<RecordRegistr
         reg.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "record_fee",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Amount, request.PaymentMode, request.PaymentDate }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "record_fee",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { request.Amount, request.PaymentMode, request.PaymentDate }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

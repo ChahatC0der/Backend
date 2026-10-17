@@ -44,15 +44,15 @@ public class DeleteAlumniCommandHandler : IRequestHandler<DeleteAlumniCommand, R
         alumni.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Alumni",
-            Action = "delete",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { alumni.AlumniId, alumni.FirstName }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Alumni",
+        //    Action = "delete",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { alumni.AlumniId, alumni.FirstName }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(true);
     }

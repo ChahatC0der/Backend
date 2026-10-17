@@ -73,16 +73,16 @@ public class PatchEnquiryCommandHandler : IRequestHandler<PatchEnquiryCommand, R
         enquiry.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Enquiry",
-            Action = "patch",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { enquiry.Source, enquiry.ParentName, enquiry.Mobile, enquiry.Email, enquiry.ClassId, enquiry.AssignedTo }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Enquiry",
+        //    Action = "patch",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { enquiry.Source, enquiry.ParentName, enquiry.Mobile, enquiry.Email, enquiry.ClassId, enquiry.AssignedTo }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = enquiry.Adapt<EnquiryResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

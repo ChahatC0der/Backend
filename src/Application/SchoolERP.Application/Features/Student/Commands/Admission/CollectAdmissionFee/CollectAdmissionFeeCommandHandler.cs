@@ -61,20 +61,20 @@ public class CollectAdmissionFeeCommandHandler : IRequestHandler<CollectAdmissio
         admission.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Admission",
-            Action = "collect_fee",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                request.Amount,
-                request.PaymentMode,
-                request.PaymentDate
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Admission",
+        //    Action = "collect_fee",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        request.Amount,
+        //        request.PaymentMode,
+        //        request.PaymentDate
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = admission.Adapt<AdmissionResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

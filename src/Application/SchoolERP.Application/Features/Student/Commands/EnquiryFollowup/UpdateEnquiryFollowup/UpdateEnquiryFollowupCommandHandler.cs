@@ -68,16 +68,16 @@ public class UpdateEnquiryFollowupCommandHandler : IRequestHandler<UpdateEnquiry
         followup.NextFollowupDate = request.NextFollowupDate;
         followup.UpdatedAt = DateTime.UtcNow;
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "EnquiryFollowup",
-            Action = "update",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { followup.EnquiryId, followup.ActivityType, followup.Notes, followup.NextFollowupDate }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "EnquiryFollowup",
+        //    Action = "update",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { followup.EnquiryId, followup.ActivityType, followup.Notes, followup.NextFollowupDate }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(followup.Adapt<EnquiryFollowupResponse>());
     }

@@ -58,15 +58,15 @@ public class WaiveAdmissionFeeCommandHandler : IRequestHandler<WaiveAdmissionFee
         admission.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Admission",
-            Action = "waive_fee",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { Reason = request.Reason }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Admission",
+        //    Action = "waive_fee",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { Reason = request.Reason }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = admission.Adapt<AdmissionResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

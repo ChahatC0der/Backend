@@ -104,22 +104,22 @@ public class UpdateRegistrationCommandHandler : IRequestHandler<UpdateRegistrati
         registration.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "update",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                registration.StudentFirstName,
-                registration.ParentPrimaryMobile,
-                registration.ClassId,
-                registration.SectionId
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "update",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        registration.StudentFirstName,
+        //        registration.ParentPrimaryMobile,
+        //        registration.ClassId,
+        //        registration.SectionId
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = registration.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

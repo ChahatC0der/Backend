@@ -55,16 +55,16 @@ public class AssignEnquiryCommandHandler : IRequestHandler<AssignEnquiryCommand,
         enquiry.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Enquiry",
-            Action = "assign",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { AssignedTo = oldAssignedTo }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { AssignedTo = request.AssignedTo }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Enquiry",
+        //    Action = "assign",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { AssignedTo = oldAssignedTo }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { AssignedTo = request.AssignedTo }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = enquiry.Adapt<EnquiryResponse>();
 

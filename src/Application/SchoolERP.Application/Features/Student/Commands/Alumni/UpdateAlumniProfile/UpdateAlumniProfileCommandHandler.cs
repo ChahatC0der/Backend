@@ -72,21 +72,21 @@ public class UpdateAlumniProfileCommandHandler : IRequestHandler<UpdateAlumniPro
         alumni.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Alumni",
-            Action = "profile_update",
-            OldValues = oldValues,
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                alumni.Occupation,
-                alumni.CompanyName,
-                alumni.ContactMobile
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Alumni",
+        //    Action = "profile_update",
+        //    OldValues = oldValues,
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        alumni.Occupation,
+        //        alumni.CompanyName,
+        //        alumni.ContactMobile
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = alumni.Adapt<AlumniResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

@@ -46,19 +46,19 @@ public class RestoreRegistrationCommandHandler : IRequestHandler<RestoreRegistra
         registration.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                registration.Id,
-                registration.RegistrationNumber
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        registration.Id,
+        //        registration.RegistrationNumber
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(true);
     }

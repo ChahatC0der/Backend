@@ -50,15 +50,15 @@ public class RestoreEnquiryFollowupCommandHandler : IRequestHandler<RestoreEnqui
         followup.UpdatedAt = DateTime.UtcNow;
 
         var userId = _currentUserService.GetUserId() ?? 0;
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "EnquiryFollowup",
-            Action = "restore",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { followup.Id, followup.EnquiryId, followup.ActivityType }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "EnquiryFollowup",
+        //    Action = "restore",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { followup.Id, followup.EnquiryId, followup.ActivityType }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         return Result.Success(true);
     }

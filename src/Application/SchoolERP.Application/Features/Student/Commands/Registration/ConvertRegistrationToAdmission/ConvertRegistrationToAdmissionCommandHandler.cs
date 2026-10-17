@@ -68,22 +68,22 @@ public class ConvertRegistrationToAdmissionCommandHandler : IRequestHandler<Conv
 
         // TODO: Create Admission + Student record — link reg.ConvertedToStudentId
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Registration",
-            Action = "convert",
-            OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                Status = "converted",
-                request.AcademicYearId,
-                request.ClassId,
-                request.SectionId
-            }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Registration",
+        //    Action = "convert",
+        //    OldValues = System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new
+        //    {
+        //        Status = "converted",
+        //        request.AcademicYearId,
+        //        request.ClassId,
+        //        request.SectionId
+        //    }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = reg.Adapt<RegistrationResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));

@@ -60,15 +60,15 @@ public class CreateEnquiryCommandHandler : IRequestHandler<CreateEnquiryCommand,
 
         var userId = _currentUserService.GetUserId() ?? 0;
 
-        _dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
-        {
-            TenantId = tenantId,
-            PerformedBy = userId,
-            Resource = "Enquiry",
-            Action = "create",
-            NewValues = System.Text.Json.JsonSerializer.Serialize(new { enquiry.ParentName, enquiry.Mobile, enquiry.Source, enquiry.ClassId }),
-            CreatedAt = DateTime.UtcNow
-        });
+        //_dbContext.Set<RbacAuditLog>().Add(new RbacAuditLog
+        //{
+        //    TenantId = tenantId,
+        //    PerformedBy = userId,
+        //    Resource = "Enquiry",
+        //    Action = "create",
+        //    NewValues = System.Text.Json.JsonSerializer.Serialize(new { enquiry.ParentName, enquiry.Mobile, enquiry.Source, enquiry.ClassId }),
+        //    CreatedAt = DateTime.UtcNow
+        //});
 
         var response = enquiry.Adapt<EnquiryResponse>();
         return Result.Success(await FillComputedAsync(response, cancellationToken));
