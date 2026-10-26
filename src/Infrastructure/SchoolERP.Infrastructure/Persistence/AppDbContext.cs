@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -90,27 +90,31 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         {
             var clrType = entityType.ClrType;
 
-            // 1. TENANT FILTER (if implements IMustHaveTenant)
-            if (typeof(IMustHaveTenant).IsAssignableFrom(clrType))
+            var hasTenant = typeof(IMustHaveTenant).IsAssignableFrom(clrType);
+            var hasBranch = typeof(IMustHaveBranch).IsAssignableFrom(clrType);
+
+            if (!hasTenant && !hasBranch) continue;
+
+            var parameter = Expression.Parameter(clrType, "e");
+            Expression? predicate = null;
+
+            if (hasTenant)
             {
-                var parameter = Expression.Parameter(clrType, "e");
                 var tenantProp = Expression.Property(parameter, "TenantId");
                 var currentTenant = Expression.Property(Expression.Constant(this), nameof(CurrentTenantId));
-                var tenantEquals = Expression.Equal(tenantProp, currentTenant);
-
-                modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(tenantEquals, parameter));
+                predicate = Expression.Equal(tenantProp, currentTenant);
             }
 
-            // 2. BRANCH FILTER (if implements IMustHaveBranch) — sirf BranchId
-            if (typeof(IMustHaveBranch).IsAssignableFrom(clrType))
+            if (hasBranch)
             {
-                var parameter = Expression.Parameter(clrType, "e");
                 var branchProp = Expression.Property(parameter, "BranchId");
                 var currentBranch = Expression.Property(Expression.Constant(this), nameof(CurrentBranchId));
                 var branchEquals = Expression.Equal(branchProp, currentBranch);
-
-                modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(branchEquals, parameter));
+                predicate = predicate is null ? branchEquals : Expression.AndAlso(predicate, branchEquals);
             }
+
+            if (predicate is not null)
+                modelBuilder.Entity(clrType).HasQueryFilter(Expression.Lambda(predicate, parameter));
         }
     }
 

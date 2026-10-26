@@ -51,4 +51,38 @@ public static class EnumMaps_JsonAdapter
         [ConcessionType.Sibling]    = "sibling",
         [ConcessionType.Merit]      = "merit",
     };
+
+    public static readonly IReadOnlyDictionary<PaymentMode, string> PaymentModeMap = new Dictionary<PaymentMode, string>
+    {
+        [PaymentMode.Cash]         = "cash",
+        [PaymentMode.Cheque]       = "cheque",
+        [PaymentMode.BankTransfer] = "bank_transfer",
+        [PaymentMode.Online]       = "online",
+        [PaymentMode.Card]         = "card",
+    };
+
+    public static readonly IReadOnlyDictionary<PaymentStatus, string> PaymentStatusMap = new Dictionary<PaymentStatus, string>
+    {
+        [PaymentStatus.Completed] = "completed",
+        [PaymentStatus.Pending]   = "pending",
+        [PaymentStatus.Failed]    = "failed",
+        [PaymentStatus.Bounced]   = "bounced",
+        [PaymentStatus.Refunded]  = "refunded",
+    };
+
+    public static readonly IReadOnlyDictionary<RefundReason, string> RefundReasonMap = new Dictionary<RefundReason, string>
+    {
+        [RefundReason.Withdrawal]   = "withdrawal",
+        [RefundReason.Overpayment]  = "overpayment",
+        [RefundReason.Cancellation] = "cancellation",
+        [RefundReason.Other]        = "other",
+    };
+
+    public static readonly IReadOnlyDictionary<RefundStatus, string> RefundStatusMap = new Dictionary<RefundStatus, string>
+    {
+        [RefundStatus.Pending]   = "pending",
+        [RefundStatus.Approved]  = "approved",
+        [RefundStatus.Completed] = "completed",
+        [RefundStatus.Rejected]  = "rejected",
+    };
 }

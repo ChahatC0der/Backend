@@ -1,4 +1,4 @@
-﻿using Finbuckle.MultiTenant.AspNetCore.Extensions;
+using Finbuckle.MultiTenant.AspNetCore.Extensions;
 using Finbuckle.MultiTenant.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -82,6 +82,7 @@ public static class DependencyInjection
 
         services.AddScoped<IFeeSequenceGenerator, FeeSequenceGenerator>();
         services.AddScoped<ICurrentAcademicYearProvider, CurrentAcademicYearProvider>();
+        services.AddScoped<IWalletLedgerWriter, WalletLedgerWriter>();
 
         // ==========================================================
         // 🔥 5. DAPPER (Read Side)
