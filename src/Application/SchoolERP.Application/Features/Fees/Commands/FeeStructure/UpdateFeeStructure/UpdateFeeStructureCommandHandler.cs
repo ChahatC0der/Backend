@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Interfaces;
@@ -8,6 +8,8 @@ using SchoolERP.Domain.Fees.Enums;
 using SchoolERP.Domain.Shared.Results;
 using FeeStructureEntity = SchoolERP.Domain.Fees.Entities.FeeStructure;
 using FeeStructureLineEntity = SchoolERP.Domain.Fees.Entities.FeeStructureLine;
+using InvoiceEntity = SchoolERP.Domain.Fees.Entities.Invoice;
+using InvoiceStatusEnum = SchoolERP.Domain.Fees.Enums.InvoiceStatus;
 
 namespace SchoolERP.Application.Features.Fees.Commands.FeeStructure.UpdateFeeStructure;
 
@@ -41,13 +43,12 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
         if (entity.Status == FeeStructureStatus.Archived)
             return Error.Conflict("Archived fee structures cannot be edited.");
 
-        // Historical-edit guard — uncomment after Phase 4 creates Invoice entity.
-        // var referenced = await _db.Set<InvoiceEntity>()
-        //     .AnyAsync(i => i.FeeStructureId == entity.Id
-        //                 && i.Status != InvoiceStatus.Cancelled
-        //                 && i.DeletedAt == null, ct);
-        // if (referenced) return Error.Conflict(
-        //     "This structure is referenced by non-cancelled invoices. Clone and archive instead of editing.");
+        var referenced = await _db.Set<InvoiceEntity>()
+    .AnyAsync(i => i.FeeStructureId == entity.Id
+                && i.Status != InvoiceStatusEnum.Cancelled
+                && i.DeletedAt == null, ct);
+if (referenced) return Error.Conflict(
+    "This structure is referenced by non-cancelled invoices. Clone and archive this structure instead of editing.");
 
         if (!TryParseEnum<ProrationMethod>(EnumMaps_JsonAdapter.ProrationMethodMap, request.Request.ProrationMethod, out var proration))
             return Error.Validation($"Invalid ProrationMethod '{request.Request.ProrationMethod}'.");

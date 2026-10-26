@@ -80,6 +80,9 @@ public static class DependencyInjection
         services.AddScoped<ICurrentBranchService, CurrentBranchService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+        services.AddScoped<IFeeSequenceGenerator, FeeSequenceGenerator>();
+        services.AddScoped<ICurrentAcademicYearProvider, CurrentAcademicYearProvider>();
+
         // ==========================================================
         // 🔥 5. DAPPER (Read Side)
         // ==========================================================
