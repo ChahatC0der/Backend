@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Student.Admission.Entities;
 
-public class Admission : BranchEntity
+public class Admission : BranchEntity, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
     public long AcademicYearId { get; set; }

@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Student.Alumni.Entities;
 
-public class Alumni : BranchEntity
+public class Alumni : BranchEntity, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
     public long? StudentId { get; set; }

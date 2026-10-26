@@ -6,13 +6,14 @@ using SchoolERP.Infrastructure.Persistence.Configurations.Common;
 
 namespace SchoolERP.Infrastructure.Persistence.Configurations.Student;
 
-public class StudentEnrollmentConfiguration : BaseEntityConfiguration<StudentEnrollmentEntity>
+public class StudentEnrollmentConfiguration : BaseBranchOnlyEntityConfiguration<StudentEnrollmentEntity>
 {
     public override void Configure(EntityTypeBuilder<StudentEnrollmentEntity> builder)
     {
         base.Configure(builder);
 
         builder.ToTable("StudentEnrollments");
+        builder.Property(x => x.TenantId).IsRequired();
 
         builder.Property(x => x.RollNumber).HasMaxLength(20);
         builder.Property(x => x.IsCurrent).HasDefaultValue(true);

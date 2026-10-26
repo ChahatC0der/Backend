@@ -13,7 +13,7 @@ public class RegistrationConfiguration : BaseBranchOnlyEntityConfiguration<Regis
 
         builder.ToTable("Registrations");
 
-        //builder.Property(x => x.TenantId).IsRequired();
+        builder.Property(x => x.TenantId).IsRequired();
         builder.Property(x => x.RegistrationNumber).HasMaxLength(50).IsRequired();
         builder.HasIndex(x => x.RegistrationNumber).IsUnique();
 

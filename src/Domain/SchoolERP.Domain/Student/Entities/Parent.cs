@@ -3,7 +3,7 @@ using StaffEntity = SchoolERP.Domain.Staff.Entities.Staff;
 
 namespace SchoolERP.Domain.Student.Entities;
 
-public class Parent : BaseEntity
+public class Parent : BranchEntity, IMustHaveTenant
 {
     public Guid TenantId { get; set; }
     public long StudentId { get; set; }

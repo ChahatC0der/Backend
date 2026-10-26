@@ -2,7 +2,7 @@
 
 namespace SchoolERP.Domain.Student.Entities;
 
-public class Family : BranchEntity
+public class Family : BranchEntity,IMustHaveTenant
 {
     public Guid TenantId { get; set; }
     public string? HeadName { get; set; }

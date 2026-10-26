@@ -2,8 +2,9 @@ using SchoolERP.Domain.Common;
 
 namespace SchoolERP.Domain.Student.Entities;
 
-public class StudentEnrollment : BaseEntity
+public class StudentEnrollment : BranchEntity,IMustHaveTenant
 {
+    public Guid TenantId { get; set; }
     public long StudentId { get; set; }
     public long AcademicYearId { get; set; }
     public long ClassId { get; set; }
