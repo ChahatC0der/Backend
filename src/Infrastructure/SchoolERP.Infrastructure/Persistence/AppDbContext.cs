@@ -1,3 +1,4 @@
+using SchoolERP.Domain.Transport.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +33,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
         _branchService = branchService;
     }
 
-    // 🔥 Business tables
+    // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¥ Business tables
     public DbSet<Student> Students => Set<Student>();
     public DbSet<StudentEnrollment> StudentEnrollments => Set<StudentEnrollment>();
     public DbSet<Parent> Parents => Set<Parent>();
@@ -120,7 +121,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // 🔥 Auto-stamp TenantId for IMustHaveTenant entities
+        // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¥ Auto-stamp TenantId for IMustHaveTenant entities
         foreach (var entry in ChangeTracker.Entries<IMustHaveTenant>())
         {
             if (entry.State == EntityState.Added)
@@ -131,7 +132,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
             }
         }
 
-        // 🔥 Auto-stamp BranchId for IMustHaveBranch entities
+        // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¥ Auto-stamp BranchId for IMustHaveBranch entities
         foreach (var entry in ChangeTracker.Entries<IMustHaveBranch>())
         {
             if (entry.State == EntityState.Added)
@@ -142,7 +143,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<long
             }
         }
 
-        // 🔥 Auto-set CreatedAt & UpdatedAt
+        // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¥ Auto-set CreatedAt & UpdatedAt
         foreach (var entry in ChangeTracker.Entries<IAuditableTimestamps>())
         {
             if (entry.State == EntityState.Added)

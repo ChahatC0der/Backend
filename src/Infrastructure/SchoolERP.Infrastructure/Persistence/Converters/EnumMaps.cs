@@ -1,4 +1,5 @@
-﻿using SchoolERP.Domain.Fees.Enums;
+using SchoolERP.Domain.Fees.Enums;
+using SchoolERP.Domain.Transport.Enums;
 
 namespace SchoolERP.Infrastructure.Persistence.Converters;
 
@@ -139,5 +140,50 @@ public static class EnumMaps
         [FinancialAuditAction.Reverse] = "reverse",
         [FinancialAuditAction.Waive]   = "waive",
         [FinancialAuditAction.Adjust]  = "adjust",
+    };
+
+    // ===== Transport module (Phase 0) =====
+    public static readonly IReadOnlyDictionary<VehicleType, string> VehicleTypeMap = new Dictionary<VehicleType, string>
+    {
+        [VehicleType.Bus]     = "bus",
+        [VehicleType.Van]     = "van",
+        [VehicleType.Minibus] = "minibus",
+        [VehicleType.Car]     = "car",
+        [VehicleType.Other]   = "other",
+    };
+
+    public static readonly IReadOnlyDictionary<VehicleStatus, string> VehicleStatusMap = new Dictionary<VehicleStatus, string>
+    {
+        [VehicleStatus.Active]      = "active",
+        [VehicleStatus.Maintenance] = "maintenance",
+        [VehicleStatus.Retired]     = "retired",
+    };
+
+    public static readonly IReadOnlyDictionary<VehicleDocumentType, string> VehicleDocumentTypeMap = new Dictionary<VehicleDocumentType, string>
+    {
+        [VehicleDocumentType.Insurance]    = "insurance",
+        [VehicleDocumentType.Puc]          = "puc",
+        [VehicleDocumentType.Fitness]      = "fitness",
+        [VehicleDocumentType.Registration] = "registration",
+    };
+
+    public static readonly IReadOnlyDictionary<RouteStatus, string> RouteStatusMap = new Dictionary<RouteStatus, string>
+    {
+        [RouteStatus.Active]   = "active",
+        [RouteStatus.Inactive] = "inactive",
+    };
+
+    public static readonly IReadOnlyDictionary<StopType, string> StopTypeMap = new Dictionary<StopType, string>
+    {
+        [StopType.PickupOnly] = "pickup_only",
+        [StopType.DropOnly]   = "drop_only",
+        [StopType.Both]       = "both",
+    };
+
+    public static readonly IReadOnlyDictionary<TransportFeeFrequency, string> TransportFeeFrequencyMap = new Dictionary<TransportFeeFrequency, string>
+    {
+        [TransportFeeFrequency.Monthly]    = "monthly",
+        [TransportFeeFrequency.Quarterly]  = "quarterly",
+        [TransportFeeFrequency.HalfYearly] = "half_yearly",
     };
 }

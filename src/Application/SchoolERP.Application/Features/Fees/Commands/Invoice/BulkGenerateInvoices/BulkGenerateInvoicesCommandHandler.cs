@@ -21,11 +21,16 @@ public sealed class BulkGenerateInvoicesCommandHandler : IRequestHandler<BulkGen
     private readonly ICurrentBranchService _branch;
     private readonly ICurrentAcademicYearProvider _ay;
     private readonly IFeeSequenceGenerator _sequence;
+    private readonly ITransportFeeQuoteProvider _transportProvider;
 
     public BulkGenerateInvoicesCommandHandler(
         IApplicationDbContext db, ICurrentTenantService tenant, ICurrentBranchService branch,
-        ICurrentAcademicYearProvider ay, IFeeSequenceGenerator sequence)
-    { _db = db; _tenant = tenant; _branch = branch; _ay = ay; _sequence = sequence; }
+        ICurrentAcademicYearProvider ay, IFeeSequenceGenerator sequence,
+        ITransportFeeQuoteProvider transportProvider)
+    {
+        _db = db; _tenant = tenant; _branch = branch;
+        _ay = ay; _sequence = sequence; _transportProvider = transportProvider;
+    }
 
     public async Task<Result<BulkGenerateResult>> Handle(BulkGenerateInvoicesCommand request, CancellationToken ct)
     {
@@ -36,7 +41,6 @@ public sealed class BulkGenerateInvoicesCommandHandler : IRequestHandler<BulkGen
         var ayInfo = await _ay.GetByIdAsync(request.Request.AcademicYearId, ct);
         if (ayInfo is null) return Error.NotFound("AcademicYear", request.Request.AcademicYearId.ToString());
 
-        // Resolve target cohort via enrollment
         var enrollQuery = _db.Set<StudentEnrollmentEntity>().AsNoTracking()
             .Where(e => e.AcademicYearId == request.Request.AcademicYearId);
 
@@ -47,14 +51,14 @@ public sealed class BulkGenerateInvoicesCommandHandler : IRequestHandler<BulkGen
                 enrollQuery = enrollQuery.Where(e => e.SectionId == request.Request.SectionId.Value);
         }
 
-        var studentIds = await enrollQuery.Select(e => e.StudentId).Distinct().Take(MaxStudentsPerRequest + 1).ToListAsync(ct);
+        var studentIds = await enrollQuery.Select(e => e.StudentId).Distinct()
+            .Take(MaxStudentsPerRequest + 1).ToListAsync(ct);
         if (studentIds.Count > MaxStudentsPerRequest)
             return Error.Validation($"Bulk generation is capped at {MaxStudentsPerRequest} students per request in Phase 1.");
 
         if (studentIds.Count == 0)
             return Result.Success(new BulkGenerateResult(0, 0, 0, 0, Array.Empty<string>()));
 
-        // Pre-check duplicates: which of these students already have a live invoice for this period?
         var existing = await _db.Set<InvoiceEntity>().AsNoTracking()
             .Where(i => i.TenantId == tenantId && i.BranchId == branchId &&
                         i.AcademicYearId == request.Request.AcademicYearId &&
@@ -76,13 +80,12 @@ public sealed class BulkGenerateInvoicesCommandHandler : IRequestHandler<BulkGen
         {
             if (existingSet.Contains(sid)) { skipped++; continue; }
 
-            // Build draft for this student
             var draftResult = await InvoiceBuilder.BuildAsync(_db, sid, request.Request.AcademicYearId,
-                request.Request.PeriodLabel.Trim(), now, dueDate, ct);
+                request.Request.PeriodLabel.Trim(), now, dueDate, _transportProvider, ct);
             if (draftResult.IsFailure)
             {
                 failed++;
-                errors.Add($"Student {sid}: {draftResult.Error!.ToString() ?? "build failed"}");
+                errors.Add($"Student {sid}: {draftResult.Error!.ToString()}");
                 continue;
             }
 
@@ -139,8 +142,6 @@ public sealed class BulkGenerateInvoicesCommandHandler : IRequestHandler<BulkGen
 
         if (generated > 0)
             await _db.SaveChangesAsync(ct);
-
-        // TODO (audit): await _auditWriter.LogAsync("Invoices", 0, FinancialAuditAction.Create, null, new { Generated = generated, Skipped = skipped, Failed = failed }, ct);
 
         return Result.Success(new BulkGenerateResult(studentIds.Count, generated, skipped, failed, errors));
     }

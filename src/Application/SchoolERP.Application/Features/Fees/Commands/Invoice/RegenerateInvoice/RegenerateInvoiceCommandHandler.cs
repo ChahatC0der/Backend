@@ -19,11 +19,16 @@ public sealed class RegenerateInvoiceCommandHandler : IRequestHandler<Regenerate
     private readonly ICurrentBranchService _branch;
     private readonly ICurrentAcademicYearProvider _ay;
     private readonly IFeeSequenceGenerator _sequence;
+    private readonly ITransportFeeQuoteProvider _transportProvider;
 
     public RegenerateInvoiceCommandHandler(
         IApplicationDbContext db, ICurrentTenantService tenant, ICurrentBranchService branch,
-        ICurrentAcademicYearProvider ay, IFeeSequenceGenerator sequence)
-    { _db = db; _tenant = tenant; _branch = branch; _ay = ay; _sequence = sequence; }
+        ICurrentAcademicYearProvider ay, IFeeSequenceGenerator sequence,
+        ITransportFeeQuoteProvider transportProvider)
+    {
+        _db = db; _tenant = tenant; _branch = branch;
+        _ay = ay; _sequence = sequence; _transportProvider = transportProvider;
+    }
 
     public async Task<Result<InvoiceResponse>> Handle(RegenerateInvoiceCommand request, CancellationToken ct)
     {
@@ -32,7 +37,8 @@ public sealed class RegenerateInvoiceCommandHandler : IRequestHandler<Regenerate
         var (tenantId, branchId) = scope.Value;
 
         var old = await _db.Set<InvoiceEntity>().Include(i => i.Lines).FirstOrDefaultAsync(i =>
-            i.Id == request.InvoiceId && i.TenantId == tenantId && i.BranchId == branchId && i.DeletedAt == null, ct);
+            i.Id == request.InvoiceId && i.TenantId == tenantId
+            && i.BranchId == branchId && i.DeletedAt == null, ct);
         if (old is null) return Error.NotFound("Invoice", request.InvoiceId.ToString());
 
         if (old.Status == InvoiceStatus.Paid)
@@ -44,7 +50,7 @@ public sealed class RegenerateInvoiceCommandHandler : IRequestHandler<Regenerate
         if (ayInfo is null) return Error.NotFound("AcademicYear", old.AcademicYearId.ToString());
 
         var draftResult = await InvoiceBuilder.BuildAsync(_db, old.StudentId, old.AcademicYearId,
-            old.PeriodLabel, DateTime.UtcNow, old.DueDate, ct);
+            old.PeriodLabel, DateTime.UtcNow, old.DueDate, _transportProvider, ct);
         if (draftResult.IsFailure) return draftResult.Error!;
         var draft = draftResult.Value;
 
@@ -112,8 +118,6 @@ public sealed class RegenerateInvoiceCommandHandler : IRequestHandler<Regenerate
             _db.Set<ConcessionUsageEntity>().AddRange(usages);
             await _db.SaveChangesAsync(ct);
         }
-
-        // TODO (audit): await _auditWriter.LogAsync("Invoices", invoice.Id, FinancialAuditAction.Create, new { OldInvoiceId = old.Id }, invoice, ct);
 
         return Result.Success(InvoiceResponseFactory.ToResponse(invoice));
     }

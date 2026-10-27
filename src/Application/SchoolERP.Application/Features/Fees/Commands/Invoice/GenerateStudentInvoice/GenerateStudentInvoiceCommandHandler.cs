@@ -50,7 +50,7 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
         var dueDate = request.Request.DueDate ?? generationDate.AddDays(15);
 
         var draftResult = await InvoiceBuilder.BuildAsync(_db, request.Request.StudentId,
-            request.Request.AcademicYearId, request.Request.PeriodLabel.Trim(), generationDate, dueDate, ct);
+            request.Request.AcademicYearId, request.Request.PeriodLabel.Trim(), generationDate, dueDate);
         if (draftResult.IsFailure) return draftResult.Error!;
         var draft = draftResult.Value;
 

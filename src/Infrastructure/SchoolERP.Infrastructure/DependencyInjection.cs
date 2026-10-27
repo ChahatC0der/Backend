@@ -30,7 +30,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         // ==========================================================
-        // 🔥 1. DATABASE (EF Core)
+        // ðŸ”¥ 1. DATABASE (EF Core)
         // ==========================================================
         services.AddDbContext<TenantDbContext>(options =>
      options.UseSqlServer(
@@ -45,7 +45,7 @@ public static class DependencyInjection
 
 
         // ==========================================================
-        // 🔥 2. IDENTITY (User Store)
+        // ðŸ”¥ 2. IDENTITY (User Store)
         // ==========================================================
         services.AddIdentity<ApplicationUser, IdentityRole<long>>(options =>
         {
@@ -59,7 +59,7 @@ public static class DependencyInjection
         .AddDefaultTokenProviders();
 
         // ==========================================================
-        // 🔥 3. MULTI-TENANCY (Finbuckle)
+        // ðŸ”¥ 3. MULTI-TENANCY (Finbuckle)
         // ==========================================================
 
         services.AddScoped<TenantStore>();
@@ -74,7 +74,7 @@ public static class DependencyInjection
 
 
         // ==========================================================
-        // 🔥 4. TENANT SERVICE (Current Context)
+        // ðŸ”¥ 4. TENANT SERVICE (Current Context)
         // ==========================================================
         services.AddScoped<ICurrentTenantService, CurrentTenantService>();
         services.AddScoped<ICurrentBranchService, CurrentBranchService>();
@@ -83,16 +83,17 @@ public static class DependencyInjection
         services.AddScoped<IFeeSequenceGenerator, FeeSequenceGenerator>();
         services.AddScoped<ICurrentAcademicYearProvider, CurrentAcademicYearProvider>();
         services.AddScoped<IWalletLedgerWriter, WalletLedgerWriter>();
+        services.AddScoped<ITransportFeeQuoteProvider, TransportFeeQuoteProvider>();
 
         // ==========================================================
-        // 🔥 5. DAPPER (Read Side)
+        // ðŸ”¥ 5. DAPPER (Read Side)
         // ==========================================================
         services.AddScoped<IDbConnectionFactory, SqlConnectionFactory>();
         services.AddScoped(typeof(IDapperRepository<>), typeof(DapperRepository<>));
 
 
         // ==========================================================
-        // 🔥 6. CACHING (Tenant-Aware)
+        // ðŸ”¥ 6. CACHING (Tenant-Aware)
         // ==========================================================
         services.AddMemoryCache();
         services.AddScoped<ICacheService, MemoryCacheService>();

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Fees.Enums;
 using SchoolERP.Domain.Fees.ValueObjects;
@@ -9,12 +10,15 @@ using FeeHeadEntity = SchoolERP.Domain.Fees.Entities.FeeHead;
 using ConcessionEntity = SchoolERP.Domain.Fees.Entities.Concession;
 using ConcessionAllocationEntity = SchoolERP.Domain.Fees.Entities.ConcessionAllocation;
 using StudentEntity = SchoolERP.Domain.Student.Entities.Student;
+using StudentEnrollmentEntity = SchoolERP.Domain.Student.Entities.StudentEnrollment;
+using StudentFeeAssignmentEntity = SchoolERP.Domain.Fees.Entities.StudentFeeAssignment;
 
 namespace SchoolERP.Application.Features.Fees.Builders;
 
 /// <summary>
-/// Pure in-memory invoice construction — no DB writes. Called by GenerateStudentInvoice,
-/// BulkGenerateInvoices, RegenerateInvoice. Freezes all snapshots on the draft.
+/// Pure in-memory invoice construction. No DB writes.
+/// Optionally appends a transport fee line (Phase 6) when transportProvider is supplied
+/// and the student has an active transport assignment with a configured fee.
 /// </summary>
 public static class InvoiceBuilder
 {
@@ -25,14 +29,14 @@ public static class InvoiceBuilder
         string periodLabel,
         DateTime generationDate,
         DateTime dueDate,
+        ITransportFeeQuoteProvider? transportProvider = null,
         CancellationToken ct = default)
     {
-        // 1. Student + branch scope (via enrollment)
         var studentExists = await db.Set<StudentEntity>().AsNoTracking()
             .AnyAsync(s => s.Id == studentId, ct);
         if (!studentExists) return Error.NotFound("Student", studentId.ToString());
 
-        var enrollment = await db.Set<SchoolERP.Domain.Student.Entities.StudentEnrollment>().AsNoTracking()
+        var enrollment = await db.Set<StudentEnrollmentEntity>().AsNoTracking()
             .Where(e => e.StudentId == studentId && e.AcademicYearId == academicYearId)
             .OrderByDescending(e => e.Id)
             .Select(e => new { e.ClassId, e.SectionId })
@@ -40,20 +44,17 @@ public static class InvoiceBuilder
         if (enrollment is null)
             return Error.Validation($"Student {studentId} has no enrollment for academic year {academicYearId}.");
 
-        // 2. Resolve structure: override -> section -> class -> classgroup
         var structure = await ResolveStructureAsync(db, studentId, academicYearId,
             enrollment.ClassId, enrollment.SectionId, ct);
         if (structure is null)
             return Error.Validation($"No active fee structure found for student {studentId}.");
 
-        // 3. Load fee heads (for name snapshot)
         var feeHeadIds = structure.Lines.Where(l => l.DeletedAt == null)
             .Select(l => l.FeeHeadId).Distinct().ToList();
         var feeHeads = await db.Set<FeeHeadEntity>().AsNoTracking()
             .Where(h => feeHeadIds.Contains(h.Id))
             .ToDictionaryAsync(h => h.Id, h => h, ct);
 
-        // 4. Load approved concessions for student + AY
         var allocations = await db.Set<ConcessionAllocationEntity>().AsNoTracking()
             .Where(a => a.StudentId == studentId && a.AcademicYearId == academicYearId
                      && a.Status == ConcessionAllocationStatus.Approved)
@@ -68,7 +69,6 @@ public static class InvoiceBuilder
 
         var concessionsById = concessions.ToDictionary(c => c.Id);
 
-        // 5. Build source lines with frozen snapshots + per-line concession calc
         var lineDrafts = new List<InvoiceLineDraft>();
         var usageDrafts = new List<ConcessionUsageDraft>();
         decimal totalAmount = 0m;
@@ -78,7 +78,6 @@ public static class InvoiceBuilder
         {
             if (!feeHeads.TryGetValue(fl.FeeHeadId, out var head)) continue;
 
-            // Per-line concession: match applicable allocations by (FeeHeadId == line OR invoice-wide)
             var applicableConcessions = new List<ConcessionEntity>();
             foreach (var alloc in allocations)
             {
@@ -103,13 +102,12 @@ public static class InvoiceBuilder
                 LateFeeGraceDaysSnapshot = fl.LateFeeGraceDays,
                 LateFeeCapPercentSnapshot = fl.LateFeeCapPercent,
                 LateFeeSlabConfigSnapshot = fl.LateFeeSlabConfig,
-                LateFeeCapBase = netAmount,   // frozen at generation
+                LateFeeCapBase = netAmount,
             });
 
             totalAmount += fl.Amount;
             totalConcession += concessionAmount;
 
-            // Record one usage per (allocation, line) with proportional split
             if (concessionAmount > 0 && applicableConcessions.Count > 0)
             {
                 foreach (var alloc in allocations)
@@ -117,7 +115,6 @@ public static class InvoiceBuilder
                     if (!concessionsById.ContainsKey(alloc.ConcessionId)) continue;
                     var c = concessionsById[alloc.ConcessionId];
                     if (c.FeeHeadId.HasValue && c.FeeHeadId.Value != fl.FeeHeadId) continue;
-                    // Split evenly across applicable allocations for this line
                     var share = Money.Round(concessionAmount / applicableConcessions.Count);
                     if (share > 0)
                         usageDrafts.Add(new ConcessionUsageDraft
@@ -131,6 +128,39 @@ public static class InvoiceBuilder
 
         if (lineDrafts.Count == 0)
             return Error.Validation($"Fee structure {structure.Id} has no active lines.");
+
+        // ---- Transport fee integration (Phase 6) ----
+        if (transportProvider is not null)
+        {
+            var quote = await transportProvider.GetQuoteAsync(studentId, academicYearId, ct);
+            if (quote is not null && quote.Amount > 0)
+            {
+                var transportHead = await db.Set<FeeHeadEntity>().AsNoTracking()
+                    .FirstOrDefaultAsync(h => h.Code == quote.TransportFeeHeadCode
+                        && h.DeletedAt == null
+                        && h.Status == FeeHeadStatus.Active, ct);
+
+                if (transportHead is not null)
+                {
+                    lineDrafts.Add(new InvoiceLineDraft
+                    {
+                        FeeHeadId = transportHead.Id,
+                        FeeHeadNameSnapshot = transportHead.Name,
+                        Amount = quote.Amount,
+                        ConcessionApplied = 0m,
+                        NetAmount = quote.Amount,
+                        LateFeeApplicable = false,
+                        LateFeeTypeSnapshot = null,
+                        LateFeeValueSnapshot = null,
+                        LateFeeGraceDaysSnapshot = null,
+                        LateFeeCapPercentSnapshot = null,
+                        LateFeeSlabConfigSnapshot = null,
+                        LateFeeCapBase = quote.Amount,
+                    });
+                    totalAmount += quote.Amount;
+                }
+            }
+        }
 
         var draft = new InvoiceDraft
         {
@@ -156,8 +186,7 @@ public static class InvoiceBuilder
         IApplicationDbContext db, long studentId, long academicYearId,
         long classId, long? sectionId, CancellationToken ct)
     {
-        // 1. Override
-        var overrideId = await db.Set<SchoolERP.Domain.Fees.Entities.StudentFeeAssignment>().AsNoTracking()
+        var overrideId = await db.Set<StudentFeeAssignmentEntity>().AsNoTracking()
             .Where(a => a.StudentId == studentId && a.AcademicYearId == academicYearId && a.IsActive)
             .Select(a => (long?)a.FeeStructureId)
             .FirstOrDefaultAsync(ct);
@@ -165,11 +194,11 @@ public static class InvoiceBuilder
         if (overrideId.HasValue)
         {
             var s = await db.Set<FeeStructureEntity>().AsNoTracking().Include(x => x.Lines)
-                .FirstOrDefaultAsync(x => x.Id == overrideId.Value && x.DeletedAt == null && x.Status == FeeStructureStatus.Active, ct);
+                .FirstOrDefaultAsync(x => x.Id == overrideId.Value
+                    && x.DeletedAt == null && x.Status == FeeStructureStatus.Active, ct);
             if (s is not null) return s;
         }
 
-        // 2. Section -> Class -> ClassGroup
         var candidates = await db.Set<FeeStructureEntity>().AsNoTracking().Include(x => x.Lines)
             .Where(x => x.AcademicYearId == academicYearId
                      && x.DeletedAt == null && x.Status == FeeStructureStatus.Active)
