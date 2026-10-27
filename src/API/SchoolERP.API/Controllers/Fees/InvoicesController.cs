@@ -6,6 +6,7 @@ using SchoolERP.Application.Features.Fees.Commands.Invoice.AdjustInvoiceAmount;
 using SchoolERP.Application.Features.Fees.Commands.Invoice.BulkGenerateInvoices;
 using SchoolERP.Application.Features.Fees.Commands.Invoice.CancelInvoice;
 using SchoolERP.Application.Features.Fees.Commands.Invoice.GenerateStudentInvoice;
+using SchoolERP.Application.Features.Fees.Commands.Invoice.MarkOverdueInvoices;
 using SchoolERP.Application.Features.Fees.Commands.Invoice.RecalculateLateFees;
 using SchoolERP.Application.Features.Fees.Commands.Invoice.RegenerateInvoice;
 using SchoolERP.Application.Features.Fees.Commands.Invoice.WaiveLateFee;
@@ -80,10 +81,17 @@ public sealed class InvoicesController : BaseApiController
     public async Task<IActionResult> RecalculateLateFees([FromBody] RecalculateLateFeesRequest request, CancellationToken ct)
         => HandleResult(await _mediator.Send(new RecalculateLateFeesCommand(request), ct));
 
-    // ----- Cancel (soft — no delete) -----
+    // ----- Cancel (soft â€” no delete) -----
 
     [HttpDelete("{id:long}/cancel")]
     [HasPermission(PermissionNames.FeeInvoiceCancel)]
     public async Task<IActionResult> Cancel([FromRoute] long id, CancellationToken ct)
         => HandleResult(await _mediator.Send(new CancelInvoiceCommand(id), ct));
+
+    // ----- Overdue status flip (manual) -----
+    // Same handler used by OverdueInvoiceStatusJob (scheduled daily at 02:30 UTC).
+    [HttpPost("mark-overdue")]
+    [HasPermission(PermissionNames.FeeInvoiceRecalculate)]
+    public async Task<IActionResult> MarkOverdue([FromQuery] long? academicYearId, CancellationToken ct)
+        => HandleResult(await _mediator.Send(new MarkOverdueInvoicesCommand(academicYearId), ct));
 }
