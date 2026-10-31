@@ -13,11 +13,11 @@ public sealed class FeeStructureLine : BaseEntity
     public long FeeHeadId { get; set; }
     public decimal Amount { get; set; }
     public FeeFrequency Frequency { get; set; } = FeeFrequency.Monthly;
-    public int? DueDay { get; set; }
+    public short? DueDay { get; set; }
     public bool LateFeeApplicable { get; set; }
     public LateFeeType? LateFeeType { get; set; }
     public decimal? LateFeeValue { get; set; }
-    public int? LateFeeGraceDays { get; set; }
+    public short? LateFeeGraceDays { get; set; }
     public decimal? LateFeeCapPercent { get; set; }
     public string? LateFeeSlabConfig { get; set; }
 }

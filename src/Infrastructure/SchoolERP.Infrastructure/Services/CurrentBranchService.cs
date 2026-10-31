@@ -18,7 +18,7 @@ public class CurrentBranchService : ICurrentBranchService
         var context = _httpContextAccessor.HttpContext;
         if (context == null) return null;
 
-        // 1. Header override (X-Branch-Id)
+        // 1. Header override (BranchId)
         if (context.Request.Headers.TryGetValue("BranchId", out var headerValue) &&
             Guid.TryParse(headerValue, out var headerBranchId))
         {

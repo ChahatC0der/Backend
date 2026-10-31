@@ -24,7 +24,7 @@ public sealed class FeeStructureLineConfiguration : IEntityTypeConfiguration<Fee
             .HasConversion(new EnumStringConverter<FeeFrequency>(EnumMaps.FeeFrequencyMap))
             .HasMaxLength(20).IsRequired();
 
-        builder.Property(x => x.DueDay);
+        builder.Property(x => x.DueDay).HasColumnType("smallint");
         builder.Property(x => x.LateFeeApplicable).HasDefaultValue(false);
 
         builder.Property(x => x.LateFeeType)
@@ -32,7 +32,7 @@ public sealed class FeeStructureLineConfiguration : IEntityTypeConfiguration<Fee
             .HasMaxLength(20);
 
         builder.Property(x => x.LateFeeValue).HasPrecision(18, 2);
-        builder.Property(x => x.LateFeeGraceDays);
+        builder.Property(x => x.LateFeeGraceDays).HasColumnType("smallint");
         builder.Property(x => x.LateFeeCapPercent).HasPrecision(5, 2);
         builder.Property(x => x.LateFeeSlabConfig).HasColumnType("nvarchar(max)");
 

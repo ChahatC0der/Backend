@@ -8,7 +8,7 @@ public sealed class UpdateFeeHeadCommandValidator : AbstractValidator<UpdateFeeH
     {
         RuleFor(x => x.Id).GreaterThan(0);
         RuleFor(x => x.Request.Name).NotEmpty().MaximumLength(150);
-        RuleFor(x => x.Request.Code).NotEmpty().MaximumLength(50)
+        RuleFor(x => x.Request.Code).NotEmpty().MaximumLength(20)
             .Matches("^[A-Z0-9_-]+$");
         RuleFor(x => x.Request.Description).MaximumLength(500);
     }
