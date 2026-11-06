@@ -26,6 +26,11 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         builder.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
         builder.Property(x => x.PeriodLabel).HasMaxLength(100).IsRequired();
+        // Billing period tracking.
+        builder.Property(x => x.PeriodSequenceNumber);
+        builder.Property(x => x.PeriodStartDate);
+        builder.Property(x => x.PeriodEndDate);
+
         builder.Property(x => x.GenerationDate).IsRequired();
         builder.Property(x => x.DueDate).IsRequired();
 

@@ -18,34 +18,105 @@ public sealed class TransportFeeQuoteProvider : ITransportFeeQuoteProvider
     public TransportFeeQuoteProvider(AppDbContext db, ICurrentTenantService tenant)
     { _db = db; _tenant = tenant; }
 
-    public async Task<TransportFeeQuote?> GetQuoteAsync(long studentId, long academicYearId, CancellationToken ct = default)
+
+    /// <summary>
+    /// Resolves the effective transport charge for a student's
+    /// active assignment.
+    ///
+    /// When separate pickup and drop configurations exist,
+    /// the higher configured amount is selected.
+    ///
+    /// Important:
+    /// Amount, frequency, route and stop must all come from
+    /// the same selected configuration.
+    /// </summary>
+    public async Task<TransportFeeQuote?> GetQuoteAsync(
+        long studentId,
+        long academicYearId,
+        CancellationToken ct = default)
     {
+        // BLOCK 1: Resolve current tenant scope.
         var tenantId = _tenant.GetTenantId();
-        if (tenantId == Guid.Empty) return null;
 
-        var assignment = await _db.Set<TransportAssignmentEntity>().AsNoTracking()
-            .FirstOrDefaultAsync(a => a.TenantId == tenantId
-                && a.StudentId == studentId
-                && a.AcademicYearId == academicYearId
-                && a.IsCurrent && !a.IsDeleted, ct);
-        if (assignment is null) return null;
+        if (tenantId == Guid.Empty)
+        {
+            return null;
+        }
 
-        var pickup = await ResolveFeeAsync(assignment.PickupStopId, assignment.PickupRouteId, academicYearId, ct);
+        // BLOCK 2: Find the student's active transport assignment.
+        var assignment = await _db.Set<TransportAssignmentEntity>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a =>
+                a.TenantId == tenantId &&
+                a.StudentId == studentId &&
+                a.AcademicYearId == academicYearId &&
+                a.IsCurrent &&
+                !a.IsDeleted,
+                ct);
 
-        decimal dropAmount = 0;
-        var dropRouteId = assignment.DropRouteId ?? assignment.PickupRouteId;
-        var dropStopId = assignment.DropStopId ?? assignment.PickupStopId;
-        if (dropRouteId != assignment.PickupRouteId || dropStopId != assignment.PickupStopId)
-            dropAmount = (await ResolveFeeAsync(dropStopId, dropRouteId, academicYearId, ct)).Amount;
+        if (assignment is null)
+        {
+            return null;
+        }
 
-        if (pickup.Amount == 0 && dropAmount == 0) return null;
+        // BLOCK 3: Resolve pickup stop/route fee configuration.
+        var pickup = await ResolveFeeAsync(
+            assignment.PickupStopId,
+            assignment.PickupRouteId,
+            academicYearId,
+            ct);
 
-        var usedMax = dropAmount > pickup.Amount;
+        // BLOCK 4: Resolve drop configuration separately.
+        // When drop route and stop are identical to pickup,
+        // do not perform another database lookup.
+        var dropRouteId = assignment.DropRouteId
+            ?? assignment.PickupRouteId;
+
+        var dropStopId = assignment.DropStopId
+            ?? assignment.PickupStopId;
+
+        var drop = new FeeResult(0m, null);
+
+        if (dropRouteId != assignment.PickupRouteId ||
+            dropStopId != assignment.PickupStopId)
+        {
+            drop = await ResolveFeeAsync(
+                dropStopId,
+                dropRouteId,
+                academicYearId,
+                ct);
+        }
+
+        // BLOCK 5: Return null when neither configuration
+        // contains a charge.
+        if (pickup.Amount <= 0m && drop.Amount <= 0m)
+        {
+            return null;
+        }
+
+        // BLOCK 6: Select one complete fee configuration.
+        // Do not select the amount from one configuration
+        // and the frequency from another.
+        var useDropConfiguration = drop.Amount > pickup.Amount;
+
+        var selectedFee = useDropConfiguration
+            ? drop
+            : pickup;
+
+        var selectedRouteId = useDropConfiguration
+            ? dropRouteId
+            : assignment.PickupRouteId;
+
+        var selectedStopId = useDropConfiguration
+            ? dropStopId
+            : assignment.PickupStopId;
+
+        // BLOCK 7: Return the effective transport quote.
         return new TransportFeeQuote(
-            Amount: Math.Max(pickup.Amount, dropAmount),
-            Frequency: pickup.Frequency ?? "monthly",
-            RouteId: usedMax ? dropRouteId : assignment.PickupRouteId,
-            StopId: usedMax ? dropStopId : assignment.PickupStopId,
+            Amount: selectedFee.Amount,
+            Frequency: selectedFee.Frequency ?? "monthly",
+            RouteId: selectedRouteId,
+            StopId: selectedStopId,
             TransportFeeHeadCode: "TRANSPORT");
     }
 

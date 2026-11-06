@@ -182,6 +182,509 @@ public static class InvoiceBuilder
         return Result.Success(draft);
     }
 
+
+    /// <summary>
+    /// Builds an invoice draft for an explicitly calculated billing period.
+    ///
+    /// This is the new period-aware generation pipeline.
+    ///
+    /// Responsibilities:
+    /// 1. Load invoice generation context.
+    /// 2. Select FeeStructureLines applicable to this period.
+    /// 3. Calculate recurring fee amounts.
+    /// 4. Apply existing concession calculation.
+    /// 5. Aggregate concession usage.
+    /// 6. Construct the existing InvoiceDraft.
+    ///
+    /// Database loading is delegated to InvoiceGenerationContextLoader.
+    /// Fee recurrence is delegated to FeeHeadFrequencyPolicy.
+    /// Student eligibility is handled during context loading.
+    ///
+    /// This method does not save invoices.
+    /// Proration is intentionally not applied.
+    /// </summary>
+    public static async Task<Result<InvoiceDraft>> BuildForPeriodAsync(
+        IApplicationDbContext db,
+        Guid branchId,
+        long studentId,
+        long academicYearId,
+        DateOnly academicYearStartDate,
+        DateOnly academicYearEndDate,
+        BillingPeriod billingPeriod,
+        string periodLabel,
+        DateTime generationDate,
+        DateTime dueDate,
+        // Optional cross-module provider.
+        // When supplied, transport charges are included in the draft.
+        ITransportFeeQuoteProvider? transportProvider = null,
+        CancellationToken ct = default)
+    {
+        // ---------------------------------------------------------
+        // BLOCK 1: Validate the generation input.
+        // The builder must receive a complete and valid billing period.
+        // ---------------------------------------------------------
+
+        ArgumentNullException.ThrowIfNull(db);
+        ArgumentNullException.ThrowIfNull(billingPeriod);
+
+        if (string.IsNullOrWhiteSpace(periodLabel))
+        {
+            return Error.Validation("Invoice PeriodLabel is required.");
+        }
+
+        if (academicYearEndDate < academicYearStartDate)
+        {
+            return Error.Validation(
+                "Academic Year end date cannot be earlier than start date.");
+        }
+
+
+        // BLOCK: Retrieve optional transport quote.
+        //
+        // The Infrastructure provider resolves the student's active
+        // transport assignment and returns its effective fee.
+        //
+        // A null quote means the student has no configured transport
+        // charge for this Academic Year.
+        TransportFeeQuote? transportQuote = null;
+
+        if (transportProvider is not null)
+        {
+            transportQuote = await transportProvider.GetQuoteAsync(
+                studentId,
+                academicYearId,
+                ct);
+        }
+
+
+        // ---------------------------------------------------------
+        // BLOCK 2: Load the generation context.
+        //
+        // The loader retrieves:
+        // Student, Enrollment, FeeStructure, FeeHeads
+        // and applicable concession records.
+        //
+        // Database queries are not duplicated in this builder.
+        // ---------------------------------------------------------
+
+
+        var contextResult =
+            await InvoiceGenerationContextLoader.LoadAsync(
+                db,
+                branchId,
+                studentId,
+                academicYearId,
+                billingPeriod,
+                generationDate,
+
+                // Ask the loader to include the transport FeeHead
+                // in addition to regular structure FeeHeads.
+                transportQuote?.TransportFeeHeadCode,
+
+                ct);
+
+
+        if (contextResult.IsFailure)
+        {
+            return contextResult.Error!;
+        }
+
+        var context = contextResult.Value;
+
+        // ---------------------------------------------------------
+        // BLOCK 3: Prepare invoice calculation collections.
+        //
+        // Line drafts contain the frozen fee snapshots.
+        // Usage totals are aggregated by concession allocation ID.
+        //
+        // One concession allocation should produce at most one
+        // usage record per generated invoice.
+        // ---------------------------------------------------------
+
+        var lineDrafts = new List<InvoiceLineDraft>();
+
+        var concessionUsageTotals = new Dictionary<long, decimal>();
+
+        decimal totalAmount = 0m;
+        decimal totalConcession = 0m;
+
+        // ---------------------------------------------------------
+        // BLOCK 4: Process active FeeStructureLines.
+        //
+        // Each fee head is evaluated independently.
+        // OneTime fees are excluded from recurring invoices
+        // by FeeHeadFrequencyPolicy.
+        // ---------------------------------------------------------
+
+        foreach (var feeLine in context.FeeStructure.Lines
+                     .Where(line => line.DeletedAt == null))
+        {
+            // Every structure line must have a corresponding FeeHead.
+            // Missing data must not silently reduce invoice amounts.
+            if (!context.FeeHeads.TryGetValue(
+                    feeLine.FeeHeadId,
+                    out var feeHead))
+            {
+                return Error.Validation(
+                    $"FeeHead {feeLine.FeeHeadId} was not found " +
+                    $"for FeeStructure {context.FeeStructure.Id}.");
+            }
+
+            // -----------------------------------------------------
+            // BLOCK 5: Calculate fee recurrence.
+            //
+            // Examples:
+            // Monthly head + Quarterly invoice = 3 occurrences.
+            // Quarterly head + Quarterly invoice = 1 occurrence.
+            // HalfYearly head + Monthly invoice = 1 only in H1/H2 start.
+            // Annual head + Monthly invoice = 1 only at AY start.
+            //
+            // OneTime heads return zero and are excluded.
+            // -----------------------------------------------------
+
+            var occurrenceCount =
+                FeeHeadFrequencyPolicy.GetOccurrenceCount(
+                    feeLine.Frequency,
+                    academicYearStartDate,
+                    academicYearEndDate,
+                    billingPeriod);
+
+            if (occurrenceCount == 0)
+            {
+                continue;
+            }
+
+            // -----------------------------------------------------
+            // BLOCK 6: Calculate the gross charge.
+            //
+            // Amount is the configured charge per occurrence.
+            // Multiply by the number of occurrences in this invoice.
+            //
+            // ProrationCalculator is intentionally NOT called here.
+            // -----------------------------------------------------
+
+            var lineAmount = Money.Round(
+                feeLine.Amount * occurrenceCount);
+
+            if (lineAmount <= 0m)
+            {
+                continue;
+            }
+
+            // -----------------------------------------------------
+            // BLOCK 7: Resolve applicable concession allocations.
+            //
+            // A concession can apply to:
+            // - All fee heads, when FeeHeadId is null.
+            // - One specific FeeHead, when FeeHeadId is populated.
+            //
+            // Only allocations whose concession definition was loaded
+            // as applicable by the context loader are considered.
+            // -----------------------------------------------------
+
+            var applicableAllocations =
+                new List<(ConcessionAllocationEntity Allocation,
+                          ConcessionEntity Concession)>();
+
+            foreach (var allocation in context.ConcessionAllocations)
+            {
+                if (!context.Concessions.TryGetValue(
+                        allocation.ConcessionId,
+                        out var concession))
+                {
+                    continue;
+                }
+
+                // Skip concessions assigned to a different FeeHead.
+                if (concession.FeeHeadId.HasValue &&
+                    concession.FeeHeadId.Value != feeLine.FeeHeadId)
+                {
+                    continue;
+                }
+
+                applicableAllocations.Add((allocation, concession));
+            }
+
+            // -----------------------------------------------------
+            // BLOCK 8: Calculate concession and net payable.
+            //
+            // Reuse the existing ConcessionCalculator.
+            // Percentage and fixed concession stacking behaviour
+            // remains owned by that existing class.
+            // -----------------------------------------------------
+
+            var concessionAmount = ConcessionCalculator.Calculate(
+                lineAmount,
+                applicableAllocations.Select(x => x.Concession));
+
+            var netAmount = Money.Round(
+                lineAmount - concessionAmount);
+
+            // -----------------------------------------------------
+            // BLOCK 9: Construct the invoice line snapshot.
+            //
+            // Values are copied from the FeeStructureLine and FeeHead.
+            // Later changes to the FeeStructure must not change
+            // an already generated invoice line.
+            // -----------------------------------------------------
+
+            lineDrafts.Add(new InvoiceLineDraft
+            {
+                FeeHeadId = feeLine.FeeHeadId,
+
+                FeeHeadNameSnapshot = feeHead.Name,
+
+                Amount = lineAmount,
+
+                ConcessionApplied = concessionAmount,
+
+                NetAmount = netAmount,
+
+                LateFeeApplicable = feeLine.LateFeeApplicable,
+
+                LateFeeTypeSnapshot =
+                    feeLine.LateFeeType is null
+                        ? null
+                        : EnumMaps_JsonAdapter.LateFeeTypeMap[
+                            feeLine.LateFeeType.Value],
+
+                LateFeeValueSnapshot = feeLine.LateFeeValue,
+
+                LateFeeGraceDaysSnapshot = feeLine.LateFeeGraceDays,
+
+                LateFeeCapPercentSnapshot = feeLine.LateFeeCapPercent,
+
+                LateFeeSlabConfigSnapshot = feeLine.LateFeeSlabConfig,
+
+                LateFeeCapBase = netAmount
+            });
+
+            // -----------------------------------------------------
+            // BLOCK 10: Update invoice totals.
+            //
+            // TotalAmount contains gross charges.
+            // ConcessionAmount contains applied concessions.
+            // NetPayable is calculated after all lines are processed.
+            // -----------------------------------------------------
+
+            totalAmount += lineAmount;
+            totalConcession += concessionAmount;
+
+            // -----------------------------------------------------
+            // BLOCK 11: Aggregate concession usage.
+            //
+            // Current allocation policy distributes the calculated
+            // concession evenly across applicable allocations.
+            //
+            // Any rounding remainder is assigned to the last allocation
+            // so total usage exactly matches the applied concession.
+            //
+            // Usage is aggregated by allocation ID because the
+            // existing ConcessionUsage model records allocation + invoice,
+            // not allocation + invoice + line.
+            // -----------------------------------------------------
+
+            if (concessionAmount > 0m &&
+                applicableAllocations.Count > 0)
+            {
+                var remainingAmount = concessionAmount;
+
+                var roundedShare = Money.Round(
+                    concessionAmount / applicableAllocations.Count);
+
+                for (var index = 0;
+                     index < applicableAllocations.Count;
+                     index++)
+                {
+                    var allocation =
+                        applicableAllocations[index].Allocation;
+
+                    var isLast =
+                        index == applicableAllocations.Count - 1;
+
+                    var share = isLast
+                        ? remainingAmount
+                        : Money.Min(roundedShare, remainingAmount);
+
+                    if (share <= 0m)
+                    {
+                        continue;
+                    }
+
+                    concessionUsageTotals.TryGetValue(
+                        allocation.Id,
+                        out var existingAmount);
+
+                    concessionUsageTotals[allocation.Id] =
+                        Money.Round(existingAmount + share);
+
+                    remainingAmount =
+                        Money.Round(remainingAmount - share);
+                }
+            }
+        }
+
+
+        // ---------------------------------------------------------
+        // BLOCK: TRANSPORT FEE INTEGRATION
+        //
+        // Transport quote and FeeHead are handled separately
+        // from regular FeeStructureLines.
+        //
+        // The TransportFeeLineBuilder decides:
+        // - Whether the transport frequency applies.
+        // - How many occurrences belong to this billing period.
+        // - What amount should be charged.
+        // ---------------------------------------------------------
+
+        if (transportQuote is not null)
+        {
+            // Resolve the transport FeeHead from the context.
+            // Database access stays inside InvoiceGenerationContextLoader.
+            var transportFeeHead = context.FeeHeads.Values
+                .FirstOrDefault(h =>
+                    string.Equals(
+                        h.Code,
+                        transportQuote.TransportFeeHeadCode,
+                        StringComparison.OrdinalIgnoreCase));
+
+            // A configured transport quote without a valid active
+            // FeeHead must not be silently ignored.
+            if (transportFeeHead is null ||
+                transportFeeHead.Status != FeeHeadStatus.Active)
+            {
+                return Error.Validation(
+                    $"Active transport FeeHead " +
+                    $"'{transportQuote.TransportFeeHeadCode}' " +
+                    "was not found for the current branch.");
+            }
+
+            // Prevent accidental double billing when the same
+            // transport FeeHead is already included in the structure.
+            if (lineDrafts.Any(l =>
+                    l.FeeHeadId == transportFeeHead.Id))
+            {
+                return Error.Validation(
+                    "Transport FeeHead is already included in the " +
+                    "FeeStructure. It cannot also be added through " +
+                    "the transport quote.");
+            }
+
+            // Delegate recurrence and invoice-line construction
+            // to the dedicated transport builder.
+            var transportLineResult = TransportFeeLineBuilder.Build(
+                transportQuote,
+                transportFeeHead,
+                academicYearStartDate,
+                academicYearEndDate,
+                billingPeriod);
+
+            if (transportLineResult.IsFailure)
+            {
+                return transportLineResult.Error!;
+            }
+
+            // Add the transport line only when it is applicable
+            // to this billing period.
+            if (transportLineResult.Value is { } transportLine)
+            {
+                lineDrafts.Add(transportLine);
+
+                // Transport does not receive concession in this flow,
+                // so only gross amount is added here.
+                totalAmount += transportLine.Amount;
+            }
+        }
+
+        // ---------------------------------------------------------
+        // BLOCK: FINAL LINE VALIDATION
+        //
+        // Validate after both regular and transport lines have
+        // been processed.
+        // ---------------------------------------------------------
+
+        if (lineDrafts.Count == 0)
+        {
+            return Error.Validation(
+                $"No applicable fee lines found for billing period " +
+                $"'{periodLabel}'.");
+        }
+
+
+        // ---------------------------------------------------------
+        // BLOCK 12: Validate the final line collection.
+        //
+        // A recurring invoice must have at least one applicable
+        // recurring FeeStructureLine.
+        //
+        // OneTime-only structures must use their separate
+        // one-time/admission invoice flow.
+        // ---------------------------------------------------------
+
+        if (lineDrafts.Count == 0)
+        {
+            return Error.Validation(
+                $"FeeStructure {context.FeeStructure.Id} has no " +
+                $"applicable recurring fee lines for period '{periodLabel}'.");
+        }
+
+        // ---------------------------------------------------------
+        // BLOCK 13: Construct concession usage drafts.
+        //
+        // One row per concession allocation.
+        // Amounts are already aggregated across all invoice lines.
+        // ---------------------------------------------------------
+
+        var usageDrafts = concessionUsageTotals
+            .Where(x => x.Value > 0m)
+            .Select(x => new ConcessionUsageDraft
+            {
+                ConcessionAllocationId = x.Key,
+                AppliedAmount = x.Value
+            })
+            .ToList();
+
+        // ---------------------------------------------------------
+        // BLOCK 14: Construct the existing InvoiceDraft.
+        //
+        // The existing command handlers will continue to persist
+        // InvoiceDraft and its InvoiceLineDraft collection.
+        //
+        // No Invoice entity or database mutation is performed here.
+        // ---------------------------------------------------------
+
+        var draft = new InvoiceDraft
+        {
+            StudentId = context.Student.Id,
+
+            AcademicYearId = academicYearId,
+
+            ClassId = context.Enrollment.ClassId,
+
+            SectionId = context.Enrollment.SectionId,
+
+            FeeStructureId = context.FeeStructure.Id,
+
+            PeriodLabel = periodLabel.Trim(),
+
+            GenerationDate = generationDate,
+
+            DueDate = dueDate,
+
+            TotalAmount = Money.Round(totalAmount),
+
+            ConcessionAmount = Money.Round(totalConcession),
+
+            NetPayable = Money.Round(totalAmount - totalConcession),
+
+            Lines = lineDrafts,
+
+            ConcessionUsages = usageDrafts
+        };
+
+        return Result.Success(draft);
+    }
+
     private static async Task<FeeStructureEntity?> ResolveStructureAsync(
         IApplicationDbContext db, long studentId, long academicYearId,
         long classId, long? sectionId, CancellationToken ct)

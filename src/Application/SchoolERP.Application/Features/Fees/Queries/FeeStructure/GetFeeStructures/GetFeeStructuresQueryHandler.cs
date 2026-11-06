@@ -5,10 +5,9 @@ using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.DTOs;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Fees.DTOs.FeeStructure;
+using SchoolERP.Application.Features.Fees.Builders;
 using SchoolERP.Domain.Shared.Results;
-
 using FeeStructureEntity = SchoolERP.Domain.Fees.Entities.FeeStructure;
-using FeeHeadEntity = SchoolERP.Domain.Fees.Entities.FeeHead;
 
 namespace SchoolERP.Application.Features.Fees.Queries.FeeStructure.GetFeeStructures;
 
@@ -145,27 +144,14 @@ public sealed class GetFeeStructuresQueryHandler
             .Distinct()
             .ToArray();
 
-        // 9. Fetch all required FeeHeads in a single query.
-        // Inactive FeeHeads are also included because historical
-        // FeeStructureLines may reference them.
-        var feeHeadLookup = feeHeadIds.Length == 0
-            ? new Dictionary<long, (string Name, string Code)>()
-            : (await _db.Set<FeeHeadEntity>()
-                .AsNoTracking()
-                .Where(x =>
-                    x.BranchId == branchId &&
-                    x.DeletedAt == null &&
-                    feeHeadIds.Contains(x.Id))
-                .Select(x => new
-                {
-                    x.Id,
-                    x.Name,
-                    x.Code
-                })
-                .ToListAsync(ct))
-                .ToDictionary(
-                    x => x.Id,
-                    x => (Name: x.Name, Code: x.Code));
+        // 9. Load FeeHead names/codes through the shared Fees builder.
+        // Inactive FeeHeads remain available for historical structure lines;
+        // soft-deleted FeeHeads are excluded by the builder.
+        var feeHeadLookup = await FeeHeadLookupBuilder.BuildAsync(
+            _db,
+            branchId,
+            feeHeadIds,
+            ct);
 
         // 10. Map entities to response using FeeHead lookup.
         var responseData = rows

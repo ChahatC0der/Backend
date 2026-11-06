@@ -18,6 +18,13 @@ public sealed class Invoice : BaseBranchEntity
     public long? FeeStructureId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
     public string PeriodLabel { get; set; } = string.Empty;
+    // Identifies the billing period within the Academic Year.
+    public int? PeriodSequenceNumber { get; set; }
+
+    // Stores the exact billing period boundaries.
+    public DateOnly? PeriodStartDate { get; set; }
+    public DateOnly? PeriodEndDate { get; set; }
+
     public DateTime GenerationDate { get; set; }
     public DateTime DueDate { get; set; }
     public decimal TotalAmount { get; set; }

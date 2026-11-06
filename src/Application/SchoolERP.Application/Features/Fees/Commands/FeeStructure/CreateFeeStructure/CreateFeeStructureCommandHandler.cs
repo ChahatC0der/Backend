@@ -92,9 +92,22 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
         _db.Set<FeeStructureEntity>().Add(entity);
         await _db.SaveChangesAsync(ct);
 
+        // Load FeeHead names/codes for the command response using the shared builder.
+        var feeHeadIds = entity.Lines
+            .Where(line => line.DeletedAt == null)
+            .Select(line => line.FeeHeadId)
+            .Distinct()
+            .ToArray();
+
+        var feeHeadLookup = await FeeHeadLookupBuilder.BuildAsync(
+            _db,
+            branchId,
+            feeHeadIds,
+            ct);
+
         // TODO (audit): await _auditWriter.LogAsync("FeeStructures", entity.Id, FinancialAuditAction.Create, null, entity, ct);
 
-        return Result.Success(MapToResponse(entity, request.Request.Lines));
+        return Result.Success(FeeStructureResponseFactory.ToResponse(entity, feeHeadLookup));
     }
 
     private static bool TryParseEnum<TEnum>(IReadOnlyDictionary<TEnum, string> map, string value, out TEnum parsed)
@@ -104,39 +117,4 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
         foreach (var kv in map) if (string.Equals(kv.Value, value, StringComparison.OrdinalIgnoreCase)) { parsed = kv.Key; return true; }
         return false;
     }
-
-    internal static FeeStructureResponse MapToResponse(FeeStructureEntity e, IReadOnlyList<FeeStructureLineDto>? lineDtos)
-    {
-        return new FeeStructureResponse
-        {
-            Id = e.Id,
-            AcademicYearId = e.AcademicYearId,
-            ClassGroupId = e.ClassGroupId,
-            ClassId = e.ClassId,
-            SectionId = e.SectionId,
-            Name = e.Name,
-            ApplicableFrom = e.ApplicableFrom,
-            ApplicableTo = e.ApplicableTo,
-            ProrationMethod = e.ProrationMethod.ToString(),
-            PaymentAllocationPriority = e.PaymentAllocationPriority.ToString(),
-            Status = e.Status.ToString(),
-            CreatedAt = e.CreatedAt,
-            UpdatedAt = e.UpdatedAt,
-            Lines = e.Lines.Select(l => new FeeStructureLineResponse
-            {
-                Id = l.Id,
-                FeeHeadId = l.FeeHeadId,
-                Amount = l.Amount,
-                Frequency = l.Frequency.ToString(),
-                DueDay = l.DueDay,
-                LateFeeApplicable = l.LateFeeApplicable,
-                LateFeeType = l.LateFeeType?.ToString(),
-                LateFeeValue = l.LateFeeValue,
-                LateFeeGraceDays = l.LateFeeGraceDays,
-                LateFeeCapPercent = l.LateFeeCapPercent,
-                LateFeeSlabConfig = l.LateFeeSlabConfig,
-            }).ToList(),
-        };
-    }
 }
-

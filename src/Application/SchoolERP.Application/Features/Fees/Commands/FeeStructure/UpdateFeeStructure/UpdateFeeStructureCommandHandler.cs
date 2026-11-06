@@ -47,8 +47,8 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
     .AnyAsync(i => i.FeeStructureId == entity.Id
                 && i.Status != InvoiceStatusEnum.Cancelled
                 && i.DeletedAt == null, ct);
-if (referenced) return Error.Conflict(
-    "This structure is referenced by non-cancelled invoices. Clone and archive this structure instead of editing.");
+        if (referenced) return Error.Conflict(
+            "This structure is referenced by non-cancelled invoices. Clone and archive this structure instead of editing.");
 
         if (!TryParseEnum<ProrationMethod>(EnumMaps_JsonAdapter.ProrationMethodMap, request.Request.ProrationMethod, out var proration))
             return Error.Validation($"Invalid ProrationMethod '{request.Request.ProrationMethod}'.");
@@ -117,9 +117,21 @@ if (referenced) return Error.Conflict(
 
         await _db.SaveChangesAsync(ct);
 
+        // Load FeeHead names/codes for the updated response using the shared builder.
+        var feeHeadIds = entity.Lines
+            .Select(line => line.FeeHeadId)
+            .Distinct()
+            .ToArray();
+
+        var feeHeadLookup = await FeeHeadLookupBuilder.BuildAsync(
+            _db,
+            branchId,
+            feeHeadIds,
+            ct);
+
         // TODO (audit): await _auditWriter.LogAsync("FeeStructures", entity.Id, FinancialAuditAction.Update, null, entity, ct);
 
-        return Result.Success(FeeStructureResponseFactory.ToResponse(entity));
+        return Result.Success(FeeStructureResponseFactory.ToResponse(entity, feeHeadLookup));
     }
 
     private static bool TryParseEnum<TEnum>(IReadOnlyDictionary<TEnum, string> map, string value, out TEnum parsed)
