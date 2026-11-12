@@ -2,9 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Interfaces;
-using SchoolERP.Application.Features.Fees.Builders;
 using SchoolERP.Application.Features.Fees.DTOs.Concession;
-using SchoolERP.Domain.Fees.Enums;
 using SchoolERP.Domain.Shared.Results;
 using ConcessionEntity = SchoolERP.Domain.Fees.Entities.Concession;
 using FeeHeadEntity = SchoolERP.Domain.Fees.Entities.FeeHead;
@@ -26,8 +24,12 @@ public sealed class CreateConcessionCommandHandler : IRequestHandler<CreateConce
         if (scope.IsFailure) return scope.Error!;
         var (tenantId, branchId) = scope.Value;
 
-        if (!TryParseConcessionType(request.Request.Type, out var type))
-            return Error.Validation($"Invalid concession Type '{request.Request.Type}'.");
+        // Unique name check (within tenant+branch, non-deleted)
+        var nameExists = await _db.Set<ConcessionEntity>().AnyAsync(c =>
+            c.TenantId == tenantId && c.BranchId == branchId
+            && c.Name == request.Request.Name.Trim() && c.DeletedAt == null, ct);
+        if (nameExists)
+            return Error.Validation($"Concession with name '{request.Request.Name}' already exists.");
 
         if (request.Request.FeeHeadId.HasValue)
         {
@@ -42,7 +44,8 @@ public sealed class CreateConcessionCommandHandler : IRequestHandler<CreateConce
             TenantId = tenantId,
             BranchId = branchId,
             Name = request.Request.Name.Trim(),
-            Type = type,
+            Category = request.Request.Category,
+            CalculationType = request.Request.CalculationType,
             Value = request.Request.Value,
             FeeHeadId = request.Request.FeeHeadId,
             IsAutoApply = request.Request.IsAutoApply,
@@ -61,12 +64,5 @@ public sealed class CreateConcessionCommandHandler : IRequestHandler<CreateConce
             feeHeadName = await _db.Set<FeeHeadEntity>().Where(h => h.Id == entity.FeeHeadId.Value).Select(h => h.Name).FirstOrDefaultAsync(ct);
 
         return Result.Success(ConcessionResponse.FromEntity(entity, feeHeadName));
-    }
-
-    internal static bool TryParseConcessionType(string value, out ConcessionType type)
-    {
-        foreach (var kv in EnumMaps_JsonAdapter.ConcessionTypeMap)
-            if (string.Equals(kv.Value, value, StringComparison.OrdinalIgnoreCase)) { type = kv.Key; return true; }
-        type = default; return false;
     }
 }

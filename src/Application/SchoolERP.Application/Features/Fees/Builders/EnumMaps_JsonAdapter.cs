@@ -45,12 +45,20 @@ public static class EnumMaps_JsonAdapter
         [FeeStructureStatus.Archived] = "archived",
     };
 
-    public static readonly IReadOnlyDictionary<ConcessionType, string> ConcessionTypeMap = new Dictionary<ConcessionType, string>
+    public static readonly IReadOnlyDictionary<ConcessionCategory, string> ConcessionCategoryMap = new Dictionary<ConcessionCategory, string>
     {
-        [ConcessionType.Percentage] = "percentage",
-        [ConcessionType.Fixed]      = "fixed",
-        [ConcessionType.Sibling]    = "sibling",
-        [ConcessionType.Merit]      = "merit",
+        [ConcessionCategory.Merit]   = "merit",
+        [ConcessionCategory.Sibling] = "sibling",
+        [ConcessionCategory.Staff]   = "staff",
+        [ConcessionCategory.Sports]  = "sports",
+        [ConcessionCategory.Other]   = "other",
+    };
+    public static readonly IReadOnlyDictionary<ConcessionCalculationType, string> ConcessionCalculationTypeMap = new Dictionary<ConcessionCalculationType, string>
+    {
+        [ConcessionCalculationType.Percentage] = "percentage",
+        [ConcessionCalculationType.Fixed] = "fixed",
+
+  
     };
 
     public static readonly IReadOnlyDictionary<PaymentMode, string> PaymentModeMap = new Dictionary<PaymentMode, string>

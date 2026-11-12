@@ -21,6 +21,16 @@ public sealed class InvoiceLine : IdEntity
     public bool IsLateFeeLine { get; set; }
     public long? SourceInvoiceLineId { get; set; }
 
+    /// <summary>
+    /// Snapshot lineage: which FeeStructureLine produced this charge.
+    /// Null = legacy row (pre-migration) ya manually added line.
+    ///
+    /// OneTime exactly-once rule isi par chalta hai: OneTime line tabhi
+    /// bill hoti hai jab same student + AY ki koi non-cancelled invoice
+    /// me is id wali line pehle se na ho.
+    /// </summary>
+    public long? SourceFeeStructureLineId { get; set; }
+
     // Frozen rule snapshots — only meaningful on source lines (IsLateFeeLine = false)
     public bool LateFeeApplicable { get; set; }
     public string? LateFeeTypeSnapshot { get; set; }

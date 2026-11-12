@@ -185,6 +185,7 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
             NetPayable = draft.NetPayable,
             PaidAmount = 0m,
             CreditAppliedAmount = 0m,
+
             Status = InvoiceStatus.Draft,
             CreatedAt = DateTime.UtcNow,
         };
@@ -194,6 +195,7 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
             invoice.Lines.Add(new InvoiceLineEntity
             {
                 FeeHeadId = d.FeeHeadId,
+                SourceFeeStructureLineId = d.SourceFeeStructureLineId,
                 FeeHeadNameSnapshot = d.FeeHeadNameSnapshot,
                 Amount = d.Amount,
                 ConcessionApplied = d.ConcessionApplied,

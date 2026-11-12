@@ -1,20 +1,11 @@
 ﻿
-using StudentEntity = SchoolERP.Domain.Student.Entities.Student;
-using SchoolERP.Domain.Fees.Entities;
 using SchoolERP.Domain.Student.Entities;
+using SchoolERP.Domain.Fees.Entities;
 
-namespace SchoolERP.Application.Features.Fees.Builders;
-
-/// <summary>
-/// Contains all data required to construct an invoice draft.
-///
-/// This is an in-memory context only.
-/// It does not perform database queries, business calculations,
-/// or invoice persistence.
-/// </summary>
 public sealed record InvoiceGenerationContext(
+
     // Student whose invoice is being generated.
-    StudentEntity Student,
+    Student Student,
 
     // Enrollment applicable to the requested billing period.
     StudentEnrollment Enrollment,
@@ -29,5 +20,11 @@ public sealed record InvoiceGenerationContext(
     IReadOnlyList<ConcessionAllocation> ConcessionAllocations,
 
     // Concession definitions applicable on the evaluation date.
-    IReadOnlyDictionary<long, Concession> Concessions
+    IReadOnlyDictionary<long, Concession> Concessions,
+
+    // OneTime exactly-once support:
+    // Source line ids already billed on any NON-CANCELLED invoice
+    // of this student + AY. Empty set = kuch bhi bill nahi hua abhi.
+    // InvoiceBuilder isme se OneTime line skip karne ka decision leta hai.
+    HashSet<long> AlreadyBilledSourceLineIds
 );

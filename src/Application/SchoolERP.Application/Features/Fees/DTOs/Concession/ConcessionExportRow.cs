@@ -2,14 +2,14 @@ namespace SchoolERP.Application.Features.Fees.DTOs.Concession;
 
 public sealed class ConcessionExportRow
 {
-    public long Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string CalculationType { get; set; } = string.Empty;
     public decimal Value { get; set; }
-    public long? FeeHeadId { get; set; }
-    public bool IsAutoApply { get; set; }
-    public bool ApprovalRequired { get; set; }
+    public string? FeeHead { get; set; }
+    public string IsAutoApply { get; set; } = string.Empty;
+    public string ApprovalRequired { get; set; } = string.Empty;
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
-    public DateTime CreatedAt { get; set; }
 }

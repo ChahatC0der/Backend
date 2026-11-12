@@ -8,6 +8,6 @@ namespace SchoolERP.Application.Features.Fees.Queries.Concession.GetConcessions;
 
 public record class GetConcessionsQuery : PagedRequest, IQuery<PagedResponse<ConcessionResponse>>
 {
-    public string? Type { get; set; }
     public bool? IsAutoApply { get; set; }
+    public string Category { get; set; } = string.Empty;
 }

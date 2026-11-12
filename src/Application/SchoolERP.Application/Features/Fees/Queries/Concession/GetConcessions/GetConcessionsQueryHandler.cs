@@ -32,12 +32,12 @@ public sealed class GetConcessionsQueryHandler : IRequestHandler<GetConcessionsQ
         var query = _db.Set<ConcessionEntity>().AsNoTracking()
             .Where(x => x.TenantId == tenantId && x.BranchId == branchId && x.DeletedAt == null);
 
-        if (!string.IsNullOrWhiteSpace(request.Type))
+        if (!string.IsNullOrWhiteSpace(request.Category))
         {
-            var typeValue = request.Type!.Trim();
-            var matched = EnumMaps_JsonAdapter.ConcessionTypeMap.FirstOrDefault(kv =>
-                string.Equals(kv.Value, typeValue, StringComparison.OrdinalIgnoreCase));
-            if (matched.Value is not null) query = query.Where(x => x.Type == matched.Key);
+            var categoryValue = request.Category!.Trim();
+            var matched = EnumMaps_JsonAdapter.ConcessionCategoryMap.FirstOrDefault(kv =>
+                string.Equals(kv.Value, categoryValue, StringComparison.OrdinalIgnoreCase));
+            if (matched.Value is not null) query = query.Where(x => x.Category == matched.Key);
         }
 
         if (request.IsAutoApply.HasValue) query = query.Where(x => x.IsAutoApply == request.IsAutoApply.Value);
@@ -60,7 +60,9 @@ public sealed class GetConcessionsQueryHandler : IRequestHandler<GetConcessionsQ
         {
             Data = rows.Select(r => ConcessionResponse.FromEntity(r,
                 r.FeeHeadId.HasValue && lookup.TryGetValue(r.FeeHeadId.Value, out var n) ? n : null)).ToList(),
-            Page = page, Size = size, TotalCount = total,
+            Page = page,
+            Size = size,
+            TotalCount = total,
             //TotalPages = (int)Math.Ceiling(total / (double)size),
         });
     }

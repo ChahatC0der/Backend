@@ -29,7 +29,7 @@ public sealed class AutoApplySiblingConcessionsCommandHandler : IRequestHandler<
 
         var siblingConcession = await _db.Set<ConcessionEntity>()
             .Where(c => c.TenantId == tenantId && c.BranchId == branchId &&
-                        c.DeletedAt == null && c.Type == ConcessionType.Sibling)
+                        c.DeletedAt == null && c.Category == ConcessionCategory.Sibling)
             .OrderByDescending(c => c.CreatedAt)
             .FirstOrDefaultAsync(ct);
         if (siblingConcession is null)

@@ -14,6 +14,8 @@ public sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceL
 
         builder.Property(x => x.InvoiceId).IsRequired();
         builder.Property(x => x.FeeHeadId).IsRequired();
+        builder.Property(x => x.SourceFeeStructureLineId).IsRequired(false);
+
         builder.Property(x => x.Amount).HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.ConcessionApplied).HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.NetAmount).HasPrecision(18, 2).IsRequired();
@@ -32,6 +34,7 @@ public sealed class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceL
 
         builder.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("SYSUTCDATETIME()");
 
+        builder.HasIndex(x => x.SourceFeeStructureLineId).HasDatabaseName("IX_InvoiceLines_SourceFeeStructureLineId");
         builder.HasIndex(x => x.InvoiceId).HasDatabaseName("IX_InvoiceLines_InvoiceId");
         builder.HasIndex(x => new { x.InvoiceId, x.IsLateFeeLine, x.SourceInvoiceLineId })
             .HasDatabaseName("IX_InvoiceLines_Invoice_LateFee");

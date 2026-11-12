@@ -21,6 +21,8 @@ public sealed class InvoiceDraft
 public sealed class InvoiceLineDraft
 {
     public long FeeHeadId { get; init; }
+    /// <summary>Origin FeeStructureLine id (see InvoiceLine).</summary>
+    public long? SourceFeeStructureLineId { get; init; }
     public string FeeHeadNameSnapshot { get; init; } = string.Empty;
     public decimal Amount { get; init; }
     public decimal ConcessionApplied { get; init; }

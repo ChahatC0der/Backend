@@ -7,7 +7,8 @@ namespace SchoolERP.Domain.Fees.Entities;
 public sealed class Concession : BaseBranchEntity
 {
     public string Name { get; set; } = string.Empty;
-    public ConcessionType Type { get; set; }
+    public ConcessionCategory Category { get; set; }
+    public ConcessionCalculationType CalculationType { get; set; }
     public decimal Value { get; set; }
     public long? FeeHeadId { get; set; }
     public bool IsAutoApply { get; set; }

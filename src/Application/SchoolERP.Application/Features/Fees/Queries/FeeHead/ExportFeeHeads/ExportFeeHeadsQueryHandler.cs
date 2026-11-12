@@ -1,6 +1,5 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
-using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Application.Features.Fees.DTOs.FeeHead;
 using FeeHeadEntity = SchoolERP.Domain.Fees.Entities.FeeHead;

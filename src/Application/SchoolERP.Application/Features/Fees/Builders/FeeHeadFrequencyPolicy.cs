@@ -7,6 +7,8 @@ namespace SchoolERP.Application.Features.Fees.Builders;
 /// Determines how many times a FeeStructureLine should be charged
 /// within a particular invoice billing period.
 ///
+/// /// OneTime is NOT handled here — InvoiceBuilder applies the
+/// exactly-once rule before this policy is consulted.
 /// This class contains business rules only.
 /// It does not access the database, create invoice entities,
 /// calculate concessions, or save anything.

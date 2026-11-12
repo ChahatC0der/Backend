@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.Interfaces;
 using SchoolERP.Domain.Fees.Enums;
 using SchoolERP.Domain.Shared.Results;
+using SchoolERP.Domain.Fees.Entities;
 
 using StudentEntity = SchoolERP.Domain.Student.Entities.Student;
 using StudentEnrollmentEntity = SchoolERP.Domain.Student.Entities.StudentEnrollment;
@@ -282,6 +283,34 @@ public static class InvoiceGenerationContextLoader
 
 
         // ---------------------------------------------------------
+        // OneTime exactly-once support.
+        //
+        // Status != Cancelled -> cancelled invoice re-release karti hai
+        //                        (regenerate me OneTime wapas aata hai).
+        // DeletedAt == null   -> soft-deleted count nahi hote.
+        // Manual invoices     -> unki lines me source id null hai,
+        //                        isliye wo rule ko block nahi karte.
+        // ---------------------------------------------------------
+
+        var activeInvoiceIds = await db.Set<Invoice>().AsNoTracking()
+            .Where(i => i.BranchId == branchId &&
+                        i.StudentId == studentId &&
+                        i.AcademicYearId == academicYearId &&
+                        i.Status != InvoiceStatus.Cancelled &&
+                        i.DeletedAt == null)
+            .Select(i => i.Id)
+            .ToListAsync(ct);
+
+        var alreadyBilledSourceLineIds = activeInvoiceIds.Count == 0
+            ? new HashSet<long>()
+            : (await db.Set<InvoiceLine>().AsNoTracking()
+                .Where(l => activeInvoiceIds.Contains(l.InvoiceId) &&
+                            l.SourceFeeStructureLineId != null)
+                .Select(l => l.SourceFeeStructureLineId!.Value)
+                .ToListAsync(ct)).ToHashSet();
+
+
+        // ---------------------------------------------------------
         // BLOCK 7: Load approved concession allocations.
         //
         // ConcessionAllocation is associated with the student
@@ -348,7 +377,9 @@ public static class InvoiceGenerationContextLoader
             FeeStructure: selectedStructure,
             FeeHeads: feeHeads,
             ConcessionAllocations: concessionAllocations.AsReadOnly(),
-            Concessions: concessions);
+            Concessions: concessions,
+            alreadyBilledSourceLineIds
+            );
 
         return Result.Success(context);
     }

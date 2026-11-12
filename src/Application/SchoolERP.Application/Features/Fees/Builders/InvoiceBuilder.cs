@@ -312,8 +312,7 @@ public static class InvoiceBuilder
         // BLOCK 4: Process active FeeStructureLines.
         //
         // Each fee head is evaluated independently.
-        // OneTime fees are excluded from recurring invoices
-        // by FeeHeadFrequencyPolicy.
+        //"OneTime lines are included exactly once per student + AY (see BLOCK 5 rule)."
         // ---------------------------------------------------------
 
         foreach (var feeLine in context.FeeStructure.Lines
@@ -333,25 +332,44 @@ public static class InvoiceBuilder
             // -----------------------------------------------------
             // BLOCK 5: Calculate fee recurrence.
             //
-            // Examples:
-            // Monthly head + Quarterly invoice = 3 occurrences.
-            // Quarterly head + Quarterly invoice = 1 occurrence.
-            // HalfYearly head + Monthly invoice = 1 only in H1/H2 start.
-            // Annual head + Monthly invoice = 1 only at AY start.
+            // OneTime lines: "exactly-once among ACTIVE invoices" rule —
+            // billed (x1) only if no other non-cancelled invoice of this
+            // student + AY already contains a line sourced from this
+            // FeeStructureLine (matched by source line id, NOT FeeHeadId —
+            // same head ki recurring + one-time dono lines ho sakti hain).
             //
-            // OneTime heads return zero and are excluded.
+            // One rule, saare cases covered:
+            //   Normal student       -> pehli generated invoice me
+            //   Mid-year joiner      -> uski first eligible invoice me
+            //   Line baad me add hui -> next generated invoice me
+            //   Host cancel + regen  -> wapas wahi period me
+            //                           (cancelled rows count nahi hote)
             // -----------------------------------------------------
 
-            var occurrenceCount =
-                FeeHeadFrequencyPolicy.GetOccurrenceCount(
-                    feeLine.Frequency,
-                    academicYearStartDate,
-                    academicYearEndDate,
-                    billingPeriod);
+            int occurrenceCount;
 
-            if (occurrenceCount == 0)
+            if (feeLine.Frequency == FeeFrequency.OneTime)
             {
-                continue;
+                if (context.AlreadyBilledSourceLineIds.Contains(feeLine.Id))
+                {
+                    continue;   // already billed in an active invoice — skip
+                }
+
+                occurrenceCount = 1;
+            }
+            else
+            {
+                occurrenceCount =
+                    FeeHeadFrequencyPolicy.GetOccurrenceCount(
+                        feeLine.Frequency,
+                        academicYearStartDate,
+                        academicYearEndDate,
+                        billingPeriod);
+
+                if (occurrenceCount == 0)
+                {
+                    continue;
+                }
             }
 
             // -----------------------------------------------------
@@ -433,6 +451,7 @@ public static class InvoiceBuilder
                 FeeHeadId = feeLine.FeeHeadId,
 
                 FeeHeadNameSnapshot = feeHead.Name,
+                SourceFeeStructureLineId = feeLine.Id,
 
                 Amount = lineAmount,
 
@@ -617,8 +636,7 @@ public static class InvoiceBuilder
         // A recurring invoice must have at least one applicable
         // recurring FeeStructureLine.
         //
-        // OneTime-only structures must use their separate
-        // one-time/admission invoice flow.
+        //"OneTime lines land in the first period where they are active and not yet billed."
         // ---------------------------------------------------------
 
         if (lineDrafts.Count == 0)

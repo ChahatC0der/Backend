@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SchoolERP.Application.Common.Abstractions;
 using SchoolERP.Application.Common.Interfaces;
-using SchoolERP.Application.Features.Fees.Commands.Concession.CreateConcession;
 using SchoolERP.Application.Features.Fees.DTOs.Concession;
 using SchoolERP.Domain.Shared.Results;
 using ConcessionEntity = SchoolERP.Domain.Fees.Entities.Concession;
@@ -29,8 +28,13 @@ public sealed class UpdateConcessionCommandHandler : IRequestHandler<UpdateConce
             x.Id == request.Id && x.TenantId == tenantId && x.BranchId == branchId && x.DeletedAt == null, ct);
         if (entity is null) return Error.NotFound("Concession", request.Id.ToString());
 
-        if (!CreateConcessionCommandHandler.TryParseConcessionType(request.Request.Type, out var type))
-            return Error.Validation($"Invalid concession Type '{request.Request.Type}'.");
+        // Unique name check (exclude self)
+        var nameExists = await _db.Set<ConcessionEntity>().AnyAsync(c =>
+            c.TenantId == tenantId && c.BranchId == branchId
+            && c.Id != request.Id
+            && c.Name == request.Request.Name.Trim() && c.DeletedAt == null, ct);
+        if (nameExists)
+            return Error.Validation($"Concession with name '{request.Request.Name}' already exists.");
 
         if (request.Request.FeeHeadId.HasValue)
         {
@@ -41,7 +45,8 @@ public sealed class UpdateConcessionCommandHandler : IRequestHandler<UpdateConce
         }
 
         entity.Name = request.Request.Name.Trim();
-        entity.Type = type;
+        entity.Category = request.Request.Category;
+        entity.CalculationType = request.Request.CalculationType;
         entity.Value = request.Request.Value;
         entity.FeeHeadId = request.Request.FeeHeadId;
         entity.IsAutoApply = request.Request.IsAutoApply;
@@ -53,10 +58,10 @@ public sealed class UpdateConcessionCommandHandler : IRequestHandler<UpdateConce
         await _db.SaveChangesAsync(ct);
         // TODO (audit): await _auditWriter.LogAsync("Concessions", entity.Id, FinancialAuditAction.Update, null, entity, ct);
 
-        string? name = null;
+        string? feeHeadName = null;
         if (entity.FeeHeadId.HasValue)
-            name = await _db.Set<FeeHeadEntity>().Where(h => h.Id == entity.FeeHeadId.Value).Select(h => h.Name).FirstOrDefaultAsync(ct);
+            feeHeadName = await _db.Set<FeeHeadEntity>().Where(h => h.Id == entity.FeeHeadId.Value).Select(h => h.Name).FirstOrDefaultAsync(ct);
 
-        return Result.Success(ConcessionResponse.FromEntity(entity, name));
+        return Result.Success(ConcessionResponse.FromEntity(entity, feeHeadName));
     }
 }
