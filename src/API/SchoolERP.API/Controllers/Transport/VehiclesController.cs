@@ -33,17 +33,17 @@ public sealed class VehiclesController : BaseApiController
     // ----- Reads -----
 
     [HttpGet]
-    [HasPermission(PermissionNames.TransportVehicleRead)]
+    //[HasPermission(PermissionNames.TransportVehicleRead)]
     public async Task<IActionResult> Get([FromQuery] GetVehiclesQuery query, CancellationToken ct)
         => HandleResult(await _mediator.Send(query, ct));
 
     [HttpGet("light")]
-    [HasPermission(PermissionNames.TransportVehicleRead)]
+    //[HasPermission(PermissionNames.TransportVehicleRead)]
     public async Task<IActionResult> GetLight(CancellationToken ct)
         => HandleResult(await _mediator.Send(new GetVehiclesLightQuery(), ct));
 
     [HttpGet("{id:long}")]
-    [HasPermission(PermissionNames.TransportVehicleRead)]
+    //[HasPermission(PermissionNames.TransportVehicleRead)]
     public async Task<IActionResult> GetById([FromRoute] long id, CancellationToken ct)
         => HandleResult(await _mediator.Send(new GetVehicleByIdQuery(id), ct));
 
