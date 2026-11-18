@@ -24,7 +24,7 @@ public sealed class EndDriverAssignmentCommandHandler : IRequestHandler<EndDrive
         var (_, branchId) = scope.Value;
 
         var entity = await _db.Set<DriverAssignmentEntity>().FirstOrDefaultAsync(da =>
-            da.Id == request.AssignmentId && da.IsCurrent && !da.IsDeleted, ct);
+            da.Id == request.AssignmentId && da.IsCurrent, ct);
         if (entity is null) return Error.NotFound("Current DriverAssignment", request.AssignmentId.ToString());
 
         var vehicleOk = await _db.Set<VehicleEntity>().AsNoTracking()

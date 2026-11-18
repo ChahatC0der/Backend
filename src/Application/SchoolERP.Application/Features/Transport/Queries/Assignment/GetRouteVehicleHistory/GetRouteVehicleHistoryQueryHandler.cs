@@ -26,8 +26,8 @@ public sealed class GetRouteVehicleHistoryQueryHandler : IRequestHandler<GetRout
         if (scope.IsFailure) return scope.Error!;
         var (_, branchId) = scope.Value;
 
-        var query = _db.Set<RouteVehicleEntity>().AsNoTracking()
-            .Where(rv => !rv.IsDeleted);
+        var query = _db.Set<RouteVehicleEntity>().AsNoTracking();
+
 
         if (request.VehicleId.HasValue) query = query.Where(rv => rv.VehicleId == request.VehicleId.Value);
         if (request.RouteId.HasValue) query = query.Where(rv => rv.RouteId == request.RouteId.Value);

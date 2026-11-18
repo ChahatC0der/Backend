@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SchoolERP.Domain.Transport.Entities;
@@ -30,9 +31,50 @@ public sealed class TransportAssignmentConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.ValidTo);
         builder.Property(x => x.IsCurrent).IsRequired().HasDefaultValue(false);
 
-        builder.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("SYSUTCDATETIME()");
+        builder.Property(x => x.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("SYSUTCDATETIME()");
+
         builder.Property(x => x.UpdatedAt);
         builder.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
+
+        // Student relationship
+        builder.HasOne(x => x.Student)
+            .WithMany()
+            .HasForeignKey(x => x.StudentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Pickup relationships
+        builder.HasOne(x => x.PickupVehicle)
+            .WithMany()
+            .HasForeignKey(x => x.PickupVehicleId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.PickupRoute)
+            .WithMany()
+            .HasForeignKey(x => x.PickupRouteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.PickupStop)
+            .WithMany()
+            .HasForeignKey(x => x.PickupStopId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Drop relationships
+        builder.HasOne(x => x.DropVehicle)
+            .WithMany()
+            .HasForeignKey(x => x.DropVehicleId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.DropRoute)
+            .WithMany()
+            .HasForeignKey(x => x.DropRouteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(x => x.DropStop)
+            .WithMany()
+            .HasForeignKey(x => x.DropStopId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // One active transport per student per year
         builder.HasIndex(x => new { x.StudentId, x.AcademicYearId })

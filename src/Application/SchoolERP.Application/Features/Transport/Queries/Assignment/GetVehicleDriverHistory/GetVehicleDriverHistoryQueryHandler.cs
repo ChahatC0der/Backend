@@ -25,8 +25,8 @@ public sealed class GetVehicleDriverHistoryQueryHandler : IRequestHandler<GetVeh
         if (scope.IsFailure) return scope.Error!;
         var (_, branchId) = scope.Value;
 
-        var query = _db.Set<DriverAssignmentEntity>().AsNoTracking()
-            .Where(da => !da.IsDeleted);
+        var query = _db.Set<DriverAssignmentEntity>().AsNoTracking();
+          
 
         if (request.VehicleId.HasValue) query = query.Where(da => da.VehicleId == request.VehicleId.Value);
         if (request.DriverStaffId.HasValue) query = query.Where(da => da.DriverStaffId == request.DriverStaffId.Value);

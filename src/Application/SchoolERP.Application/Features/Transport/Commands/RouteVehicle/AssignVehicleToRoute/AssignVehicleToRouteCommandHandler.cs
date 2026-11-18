@@ -38,7 +38,7 @@ public sealed class AssignVehicleToRouteCommandHandler : IRequestHandler<AssignV
             return Error.Conflict($"Vehicle is {vehicle.Status}. Only Active vehicles can be assigned.");
 
         var current = await _db.Set<RouteVehicleEntity>().FirstOrDefaultAsync(rv =>
-            rv.VehicleId == vehicle.Id && rv.IsCurrent && !rv.IsDeleted, ct);
+            rv.VehicleId == vehicle.Id && rv.IsCurrent, ct);
 
         if (current is not null)
         {

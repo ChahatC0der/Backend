@@ -19,17 +19,17 @@ public sealed class RouteVehicleConfiguration : IEntityTypeConfiguration<RouteVe
         builder.Property(x => x.IsCurrent).IsRequired().HasDefaultValue(false);
         builder.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("SYSUTCDATETIME()");
         builder.Property(x => x.UpdatedAt);
-        builder.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
+        //builder.Property(x => x.IsDeleted).IsRequired().HasDefaultValue(false);
 
         // One vehicle can be current on only one route
         builder.HasIndex(x => x.VehicleId)
             .HasDatabaseName("UQ_RouteVehicles_VehicleId_Current")
             .IsUnique()
-            .HasFilter("[IsCurrent] = 1 AND [IsDeleted] = 0");
+            .HasFilter("[IsCurrent] = 1");
 
         // Route lookup of current vehicles
-        builder.HasIndex(x => new { x.RouteId, x.IsCurrent })
-            .HasDatabaseName("IX_RouteVehicles_Route_Current")
-            .HasFilter("[IsDeleted] = 0");
+        //builder.HasIndex(x => new { x.RouteId, x.IsCurrent })
+        //    .HasDatabaseName("IX_RouteVehicles_Route_Current")
+        //    .HasFilter("[IsDeleted] = 0");
     }
 }

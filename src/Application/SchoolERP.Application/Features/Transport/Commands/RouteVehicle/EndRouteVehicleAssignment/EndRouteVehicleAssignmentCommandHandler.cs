@@ -25,7 +25,7 @@ public sealed class EndRouteVehicleAssignmentCommandHandler : IRequestHandler<En
         var (_, branchId) = scope.Value;
 
         var entity = await _db.Set<RouteVehicleEntity>().FirstOrDefaultAsync(rv =>
-            rv.Id == request.AssignmentId && rv.IsCurrent && !rv.IsDeleted, ct);
+            rv.Id == request.AssignmentId && rv.IsCurrent , ct);
         if (entity is null) return Error.NotFound("Current RouteVehicle assignment", request.AssignmentId.ToString());
 
         var vehicleOk = await _db.Set<VehicleEntity>().AsNoTracking()

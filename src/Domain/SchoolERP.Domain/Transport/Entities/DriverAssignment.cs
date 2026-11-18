@@ -4,7 +4,7 @@ namespace SchoolERP.Domain.Transport.Entities;
 
 /// <summary>
 /// History-preserving driver-vehicle assignment. One vehicle can have only one current driver
-/// (filtered unique index WHERE IsCurrent = 1). DriverStaffId references Users.Id (Staff identity).
+/// (filtered unique index WHERE IsCurrent = 1). DriverStaffId references Staff.Id (Staff identity).
 /// History via IsCurrent flip; never delete rows.
 /// </summary>
 public sealed class DriverAssignment : IdEntity
@@ -16,5 +16,5 @@ public sealed class DriverAssignment : IdEntity
     public bool IsCurrent { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
-    public bool IsDeleted { get; set; }
+    //public bool IsDeleted { get; set; }
 }
