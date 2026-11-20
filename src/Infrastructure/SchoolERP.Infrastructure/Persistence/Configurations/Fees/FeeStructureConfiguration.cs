@@ -14,7 +14,7 @@ public sealed class FeeStructureConfiguration : IEntityTypeConfiguration<FeeStru
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        builder.Ignore(x => x.IsDeleted);         // no IsDeleted column in physical DB
+        builder.Ignore(x => x.IsDeleted);
         builder.Property(x => x.BranchId).IsRequired();
         builder.Property(x => x.AcademicYearId).IsRequired();
 
@@ -33,6 +33,17 @@ public sealed class FeeStructureConfiguration : IEntityTypeConfiguration<FeeStru
         builder.Property(x => x.Status)
             .HasConversion(new EnumStringConverter<FeeStructureStatus>(EnumMaps.FeeStructureStatusMap))
             .HasMaxLength(20).IsRequired();
+
+        // ── Late fee (parent-level, whole-invoice mode) ──
+        builder.Property(x => x.LateFeeMode)
+            .HasConversion(new EnumStringConverter<LateFeeMode>(EnumMaps.LateFeeModeMap))
+            .HasMaxLength(20)
+            .IsRequired();
+        builder.Property(x => x.InvoiceLateFeeType).HasMaxLength(20);
+        builder.Property(x => x.InvoiceLateFeeValue).HasColumnType("decimal(18,2)");
+        builder.Property(x => x.InvoiceLateFeeGraceDays);
+        builder.Property(x => x.InvoiceLateFeeCapPercent).HasColumnType("decimal(5,2)");
+        builder.Property(x => x.InvoiceLateFeeSlabConfig).HasColumnType("nvarchar(max)");
 
         builder.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("SYSUTCDATETIME()");
         builder.Property(x => x.UpdatedAt);

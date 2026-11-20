@@ -14,6 +14,17 @@ public sealed class InvoiceDraft
     public decimal TotalAmount { get; init; }
     public decimal ConcessionAmount { get; init; }
     public decimal NetPayable { get; init; }
+
+    // ── Invoice-level late fee snapshots (whole-invoice mode) ──
+    // Frozen at generation time. NULL when LateFeeMode != whole_invoice.
+    public string? LateFeeModeSnapshot { get; init; }
+    public string? InvoiceLateFeeTypeSnapshot { get; init; }
+    public decimal? InvoiceLateFeeValueSnapshot { get; init; }
+    public short? InvoiceLateFeeGraceDaysSnapshot { get; init; }
+    public decimal? InvoiceLateFeeCapPercentSnapshot { get; init; }
+    public string? InvoiceLateFeeSlabConfigSnapshot { get; init; }
+    public decimal? InvoiceLateFeeCapBase { get; init; }   // = NetPayable, frozen
+
     public List<InvoiceLineDraft> Lines { get; init; } = new();
     public List<ConcessionUsageDraft> ConcessionUsages { get; init; } = new();
 }
@@ -21,7 +32,6 @@ public sealed class InvoiceDraft
 public sealed class InvoiceLineDraft
 {
     public long FeeHeadId { get; init; }
-    /// <summary>Origin FeeStructureLine id (see InvoiceLine).</summary>
     public long? SourceFeeStructureLineId { get; init; }
     public string FeeHeadNameSnapshot { get; init; } = string.Empty;
     public decimal Amount { get; init; }

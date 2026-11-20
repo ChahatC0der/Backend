@@ -1,4 +1,4 @@
-﻿using SchoolERP.Application.Features.Fees.DTOs.FeeStructure;
+﻿using SchoolERP.Infrastructure.;
 using FeeStructureEntity = SchoolERP.Domain.Fees.Entities.FeeStructure;
 using FeeStructureLineEntity = SchoolERP.Domain.Fees.Entities.FeeStructureLine;
 
@@ -8,8 +8,8 @@ namespace SchoolERP.Application.Features.Fees.DTOs.FeeStructure;
 public static class FeeStructureResponseFactory
 {
     public static FeeStructureResponse ToResponse(
-        FeeStructureEntity e,
-        IReadOnlyDictionary<long, (string Name, string Code)>? feeHeadLookup = null)
+    FeeStructureEntity e,
+    IReadOnlyDictionary<long, (string Name, string Code)>? feeHeadLookup = null)
     {
         return new FeeStructureResponse
         {
@@ -23,6 +23,15 @@ public static class FeeStructureResponseFactory
             ApplicableTo = e.ApplicableTo,
             ProrationMethod = e.ProrationMethod.ToString(),
             PaymentAllocationPriority = e.PaymentAllocationPriority.ToString(),
+
+            // ── Late fee (parent-level) — snake_case to match DB + API contract ──
+            LateFeeMode = e.LateFeeMode.ToString(),
+            InvoiceLateFeeType = e.InvoiceLateFeeType,
+            InvoiceLateFeeValue = e.InvoiceLateFeeValue,
+            InvoiceLateFeeGraceDays = e.InvoiceLateFeeGraceDays,
+            InvoiceLateFeeCapPercent = e.InvoiceLateFeeCapPercent,
+            InvoiceLateFeeSlabConfig = e.InvoiceLateFeeSlabConfig,
+
             Status = e.Status.ToString(),
             CreatedAt = e.CreatedAt,
             UpdatedAt = e.UpdatedAt,

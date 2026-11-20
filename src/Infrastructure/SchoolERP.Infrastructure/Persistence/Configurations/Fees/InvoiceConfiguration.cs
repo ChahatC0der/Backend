@@ -26,7 +26,6 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         builder.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
         builder.Property(x => x.PeriodLabel).HasMaxLength(100).IsRequired();
-        // Billing period tracking.
         builder.Property(x => x.PeriodSequenceNumber);
         builder.Property(x => x.PeriodStartDate);
         builder.Property(x => x.PeriodEndDate);
@@ -45,6 +44,17 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasConversion(new EnumStringConverter<InvoiceStatus>(EnumMaps.InvoiceStatusMap))
             .HasMaxLength(20).IsRequired();
 
+        // ── Invoice-level late fee snapshots (whole-invoice mode) ──
+        // All nullable: legacy invoices have NULLs, per_head/none mode invoices also have NULLs.
+        // LateFeeModeSnapshot stored as plain string (not enum) — historical frozen data, no constraint.
+        builder.Property(x => x.LateFeeModeSnapshot).HasMaxLength(20);
+        builder.Property(x => x.InvoiceLateFeeTypeSnapshot).HasMaxLength(20);
+        builder.Property(x => x.InvoiceLateFeeValueSnapshot).HasPrecision(18, 2);
+        builder.Property(x => x.InvoiceLateFeeGraceDaysSnapshot);
+        builder.Property(x => x.InvoiceLateFeeCapPercentSnapshot).HasPrecision(5, 2);
+        builder.Property(x => x.InvoiceLateFeeSlabConfigSnapshot).HasColumnType("nvarchar(max)");
+        builder.Property(x => x.InvoiceLateFeeCapBase).HasPrecision(18, 2);
+
         builder.Property(x => x.CreatedAt).IsRequired().HasDefaultValueSql("SYSUTCDATETIME()");
         builder.Property(x => x.UpdatedAt);
         builder.Property(x => x.DeletedAt);
@@ -54,23 +64,19 @@ public sealed class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(l => l.InvoiceId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // UQ: at most one non-cancelled invoice per (Student, AY, PeriodLabel)
         builder.HasIndex(x => new { x.StudentId, x.AcademicYearId, x.PeriodLabel })
             .HasDatabaseName("UQ_Invoices_StudentYearPeriod")
             .IsUnique()
             .HasFilter("[Status] <> 'cancelled' AND [DeletedAt] IS NULL");
 
-        // UQ: invoice number unique per (Tenant, Branch)
         builder.HasIndex(x => new { x.TenantId, x.BranchId, x.InvoiceNumber })
             .HasDatabaseName("UQ_Invoices_Tenant_Branch_InvoiceNumber")
             .IsUnique();
 
-        // Historical-edit guard: fast lookup of non-cancelled invoices per structure
         builder.HasIndex(x => x.FeeStructureId)
             .HasDatabaseName("IX_Invoices_FeeStructureId_Active")
             .HasFilter("[FeeStructureId] IS NOT NULL AND [Status] <> 'cancelled' AND [DeletedAt] IS NULL");
 
-        // Student outstanding lookup
         builder.HasIndex(x => new { x.StudentId, x.AcademicYearId, x.Status })
             .HasDatabaseName("IX_Invoices_StudentId_AY_Status");
     }

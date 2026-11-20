@@ -30,7 +30,6 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
         if (scope.IsFailure) return scope.Error!;
         var (tenantId, branchId) = scope.Value;
 
-        // Branch belongs to tenant
         var branchBelongs = await _db.Set<SchoolERP.Domain.Tenants.Entities.Branch>()
             .AnyAsync(b => b.Id == branchId && b.TenantId == tenantId, ct);
         if (!branchBelongs) return Error.Unauthorized("Branch does not belong to the current tenant.");
@@ -44,9 +43,9 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
             return Error.Conflict("Archived fee structures cannot be edited.");
 
         var referenced = await _db.Set<InvoiceEntity>()
-    .AnyAsync(i => i.FeeStructureId == entity.Id
-                && i.Status != InvoiceStatusEnum.Cancelled
-                && i.DeletedAt == null, ct);
+            .AnyAsync(i => i.FeeStructureId == entity.Id
+                        && i.Status != InvoiceStatusEnum.Cancelled
+                        && i.DeletedAt == null, ct);
         if (referenced) return Error.Conflict(
             "This structure is referenced by non-cancelled invoices. Clone and archive this structure instead of editing.");
 
@@ -54,6 +53,10 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
             return Error.Validation($"Invalid ProrationMethod '{request.Request.ProrationMethod}'.");
         if (!TryParseEnum<PaymentAllocationPriority>(EnumMaps_JsonAdapter.PaymentAllocationPriorityMap, request.Request.PaymentAllocationPriority, out var priority))
             return Error.Validation($"Invalid PaymentAllocationPriority '{request.Request.PaymentAllocationPriority}'.");
+
+        // ── Parse LateFeeMode (parent-level) ──
+        if (!TryParseEnum<LateFeeMode>(EnumMaps_JsonAdapter.LateFeeModeMap, request.Request.LateFeeMode, out var lateFeeMode))
+            return Error.Validation($"Invalid LateFeeMode '{request.Request.LateFeeMode}'. Must be one of: none, per_head, whole_invoice.");
 
         // Parse incoming lines before any mutation.
         var incoming = new List<(long? Id, FeeStructureLineDto Dto, FeeFrequency Freq, LateFeeType? Type)>();
@@ -82,6 +85,14 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
         entity.ProrationMethod = proration;
         entity.PaymentAllocationPriority = priority;
         entity.UpdatedAt = DateTime.UtcNow;
+
+        // ── Late fee (parent-level) — defensive null-forcing per mode ──
+        entity.LateFeeMode = lateFeeMode;
+        entity.InvoiceLateFeeType = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeType : null;
+        entity.InvoiceLateFeeValue = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeValue : null;
+        entity.InvoiceLateFeeGraceDays = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeGraceDays : null;
+        entity.InvoiceLateFeeCapPercent = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeCapPercent : null;
+        entity.InvoiceLateFeeSlabConfig = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeSlabConfig : null;
 
         var now = DateTime.UtcNow;
         var keepIds = incoming.Where(x => x.Id.HasValue).Select(x => x.Id!.Value).ToHashSet();
@@ -117,7 +128,6 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
 
         await _db.SaveChangesAsync(ct);
 
-        // Load FeeHead names/codes for the updated response using the shared builder.
         var feeHeadIds = entity.Lines
             .Select(line => line.FeeHeadId)
             .Distinct()
@@ -128,8 +138,6 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
             branchId,
             feeHeadIds,
             ct);
-
-        // TODO (audit): await _auditWriter.LogAsync("FeeStructures", entity.Id, FinancialAuditAction.Update, null, entity, ct);
 
         return Result.Success(FeeStructureResponseFactory.ToResponse(entity, feeHeadLookup));
     }
@@ -142,4 +150,3 @@ public sealed class UpdateFeeStructureCommandHandler : IRequestHandler<UpdateFee
         return false;
     }
 }
-

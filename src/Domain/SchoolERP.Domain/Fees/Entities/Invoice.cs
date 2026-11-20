@@ -35,5 +35,14 @@ public sealed class Invoice : BaseBranchEntity
     public decimal CreditAppliedAmount { get; set; }
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Draft;
 
+    // in Invoice.cs
+    public string? LateFeeModeSnapshot { get; set; }              // null = treat as 'per_head' (legacy)
+    public string? InvoiceLateFeeTypeSnapshot { get; set; }
+    public decimal? InvoiceLateFeeValueSnapshot { get; set; }
+    public short? InvoiceLateFeeGraceDaysSnapshot { get; set; }
+    public decimal? InvoiceLateFeeCapPercentSnapshot { get; set; }
+    public string? InvoiceLateFeeSlabConfigSnapshot { get; set; }
+    public decimal? InvoiceLateFeeCapBase { get; set; }            // = NetPayable, frozen
+
     public ICollection<InvoiceLine> Lines { get; set; } = new List<InvoiceLine>();
 }

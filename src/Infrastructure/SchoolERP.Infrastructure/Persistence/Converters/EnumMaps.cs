@@ -55,6 +55,14 @@ public static class EnumMaps
         [LateFeeType.Monthly]       = "monthly",
     };
 
+    // ── NEW: add this right below LateFeeTypeMap ──
+    public static readonly IReadOnlyDictionary<LateFeeMode, string> LateFeeModeMap = new Dictionary<LateFeeMode, string>
+    {
+        [LateFeeMode.None] = "none",
+        [LateFeeMode.PerHead] = "per_head",
+        [LateFeeMode.WholeInvoice] = "whole_invoice",
+    };
+
     public static readonly IReadOnlyDictionary<InvoiceStatus, string> InvoiceStatusMap = new Dictionary<InvoiceStatus, string>
     {
         [InvoiceStatus.Draft]         = "draft",

@@ -28,8 +28,6 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
         if (scope.IsFailure) return scope.Error!;
         var (tenantId, branchId) = scope.Value;
 
-        // Q1: branch is owned by tenant — verify before writing.
-        // TODO: replace with Branch entity type from your repo.
         var branchBelongs = await _db.Set<SchoolERP.Domain.Tenants.Entities.Branch>()
             .AnyAsync(b => b.Id == branchId && b.TenantId == tenantId, ct);
         if (!branchBelongs) return Error.Unauthorized("Branch does not belong to the current tenant.");
@@ -39,7 +37,11 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
         if (!TryParseEnum<PaymentAllocationPriority>(EnumMaps_JsonAdapter.PaymentAllocationPriorityMap, request.Request.PaymentAllocationPriority, out var priority))
             return Error.Validation($"Invalid PaymentAllocationPriority '{request.Request.PaymentAllocationPriority}'.");
 
-        // Validate each line — parse enums and JSON slabs before any mutation.
+        // ── Parse LateFeeMode (parent-level) ──
+        if (!TryParseEnum<LateFeeMode>(EnumMaps_JsonAdapter.LateFeeModeMap, request.Request.LateFeeMode, out var lateFeeMode))
+            return Error.Validation($"Invalid LateFeeMode '{request.Request.LateFeeMode}'. Must be one of: none, per_head, whole_invoice.");
+
+        // Validate each line
         var newLines = new List<FeeStructureLineEntity>();
         foreach (var line in request.Request.Lines)
         {
@@ -85,6 +87,16 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
             ApplicableTo = request.Request.ApplicableTo,
             ProrationMethod = proration,
             PaymentAllocationPriority = priority,
+
+            // ── Late fee (parent-level) — defensive null-forcing per mode ──
+            // Even if validator is bypassed, this guard prevents stale invoice-level fields leaking into DB
+            LateFeeMode = lateFeeMode,
+            InvoiceLateFeeType = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeType : null,
+            InvoiceLateFeeValue = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeValue : null,
+            InvoiceLateFeeGraceDays = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeGraceDays : null,
+            InvoiceLateFeeCapPercent = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeCapPercent : null,
+            InvoiceLateFeeSlabConfig = lateFeeMode == LateFeeMode.WholeInvoice ? request.Request.InvoiceLateFeeSlabConfig : null,
+
             Status = FeeStructureStatus.Draft,
             CreatedAt = DateTime.UtcNow,
             Lines = newLines,
@@ -92,7 +104,6 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
         _db.Set<FeeStructureEntity>().Add(entity);
         await _db.SaveChangesAsync(ct);
 
-        // Load FeeHead names/codes for the command response using the shared builder.
         var feeHeadIds = entity.Lines
             .Where(line => line.DeletedAt == null)
             .Select(line => line.FeeHeadId)
@@ -104,8 +115,6 @@ public sealed class CreateFeeStructureCommandHandler : IRequestHandler<CreateFee
             branchId,
             feeHeadIds,
             ct);
-
-        // TODO (audit): await _auditWriter.LogAsync("FeeStructures", entity.Id, FinancialAuditAction.Create, null, entity, ct);
 
         return Result.Success(FeeStructureResponseFactory.ToResponse(entity, feeHeadLookup));
     }

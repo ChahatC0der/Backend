@@ -12,6 +12,15 @@ public sealed class FeeStructureResponse
     public DateTime ApplicableTo { get; set; }
     public string ProrationMethod { get; set; } = string.Empty;
     public string PaymentAllocationPriority { get; set; } = string.Empty;
+
+    // ── Late fee (parent-level) ──
+    public string LateFeeMode { get; set; } = "per_head";
+    public string? InvoiceLateFeeType { get; set; }
+    public decimal? InvoiceLateFeeValue { get; set; }
+    public short? InvoiceLateFeeGraceDays { get; set; }
+    public decimal? InvoiceLateFeeCapPercent { get; set; }
+    public string? InvoiceLateFeeSlabConfig { get; set; }
+
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
