@@ -12,10 +12,8 @@ namespace SchoolERP.Application.Features.Fees.Builders;
 ///      (Value is straight amount).
 ///   3. Cap total at lineAmount so NetPayable never goes negative.
 ///
-/// Caller responsibility (InvoiceBuilder):
+/// Caller responsibility (InvoiceBuilder / ConcessionEngine):
 ///   - decide WHICH concessions apply to a given line
-///     (head-specific ones for that head + total-level ones
-///      whose FeeHeadId == null)
 ///   - load only live concessions (DeletedAt == null, date-valid,
 ///     tenant/branch scoped)
 ///   - load only Approved allocations
@@ -23,7 +21,7 @@ namespace SchoolERP.Application.Features.Fees.Builders;
 /// This method does NOT filter by FeeHeadId. It trusts the caller's
 /// list. Total-level concessions arrive here as just another item in
 /// `applicable`; their percentage is taken against this line's
-/// lineAmount — which is exactly what spec §7 (additive on original
+/// lineAmount — exactly what spec §7 (additive on original
 /// gross, not on remaining) means.
 /// </summary>
 public static class ConcessionCalculator
