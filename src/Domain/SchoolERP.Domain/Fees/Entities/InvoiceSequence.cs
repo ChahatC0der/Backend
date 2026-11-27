@@ -11,5 +11,5 @@ public sealed class InvoiceSequence : IMustHaveBranch
     public Guid BranchId { get; set; }
     public string AcademicYearCode { get; set; } = string.Empty;
     public string SequenceType { get; set; } = string.Empty;
-    public long CurrentSequence { get; set; }
+    public int CurrentSequence { get; set; }
 }

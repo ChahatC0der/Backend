@@ -19,10 +19,15 @@ public class StudentEnrollmentConfiguration : BaseBranchOnlyEntityConfiguration<
         builder.Property(x => x.IsCurrent).HasDefaultValue(true);
         builder.Property(x => x.EnrolledAt).HasDefaultValueSql("CAST(GETUTCDATE() AS DATE)");
 
+        builder.Ignore(e => e.DeletedAt);
+        builder.Ignore(e => e.IsDeleted);
+        builder.Ignore(e => e.UpdatedAt);
+
         builder.HasOne(x => x.Student)
             .WithMany(s => s.Enrollments)
             .HasForeignKey(x => x.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
+
 
         builder.HasIndex(x => new { x.StudentId, x.AcademicYearId }).IsUnique();
         builder.HasIndex(x => new { x.ClassId, x.SectionId, x.AcademicYearId });

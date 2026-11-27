@@ -9,6 +9,7 @@ public sealed class InvoiceListResponse
     public long? SectionId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
     public string PeriodLabel { get; set; } = string.Empty;
+    public int? PeriodSequenceNumber { get; set; }
     public DateTime DueDate { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal NetPayable { get; set; }

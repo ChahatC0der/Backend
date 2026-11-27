@@ -85,19 +85,19 @@ public sealed class RecalculateLateFeesCommandHandler : IRequestHandler<Recalcul
 
                 if (existingLine is not null)
                 {
-                    existingLine.Amount = calculated;
-                    existingLine.NetAmount = calculated;
+                    existingLine.Amount = calculated.RawAmount;
+                    existingLine.NetAmount = calculated.RawAmount;
                 }
-                else if (calculated > 0)
+                else if (calculated.RawAmount > 0)
                 {
                     invoice.Lines.Add(new InvoiceLineEntity
                     {
                         InvoiceId = invoice.Id,
                         FeeHeadId = sourceLine.FeeHeadId,
                         FeeHeadNameSnapshot = $"{sourceLine.FeeHeadNameSnapshot} (Late Fee)",
-                        Amount = calculated,
+                        Amount = calculated.RawAmount,
                         ConcessionApplied = 0m,
-                        NetAmount = calculated,
+                        NetAmount = calculated.RawAmount,
                         IsLateFeeLine = true,
                         SourceInvoiceLineId = sourceLine.Id,
                         LateFeeApplicable = false,

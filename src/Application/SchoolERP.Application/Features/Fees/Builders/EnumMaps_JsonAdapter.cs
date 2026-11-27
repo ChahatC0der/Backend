@@ -38,6 +38,13 @@ public static class EnumMaps_JsonAdapter
         [LateFeeType.Monthly]       = "monthly",
     };
 
+    public static readonly IReadOnlyDictionary<LateFeeMode, string> LateFeeModeMap = new Dictionary<LateFeeMode, string>
+    {
+        [LateFeeMode.None] = "none",
+        [LateFeeMode.PerHead] = "per_head",
+        [LateFeeMode.WholeInvoice] = "whole_invoice",
+    };
+
     public static readonly IReadOnlyDictionary<FeeStructureStatus, string> FeeStructureStatusMap = new Dictionary<FeeStructureStatus, string>
     {
         [FeeStructureStatus.Draft]    = "draft",

@@ -24,7 +24,7 @@ public sealed class GetInvoiceByIdQueryHandler : IRequestHandler<GetInvoiceByIdQ
         var (tenantId, branchId) = scope.Value;
 
         var invoice = await _db.Set<InvoiceEntity>().AsNoTracking()
-            .Include(i => i.Lines)
+            .Include(i => i.Lines.OrderBy(l => l.Id))
             .FirstOrDefaultAsync(i => i.Id == request.Id && i.TenantId == tenantId
                                    && i.BranchId == branchId && i.DeletedAt == null, ct);
         if (invoice is null) return Error.NotFound("Invoice", request.Id.ToString());

@@ -51,13 +51,9 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
             ayInfo.EndDate,
             frequency);
 
-
-
         // Find the exact requested period.
         var billingPeriod = billingPeriods.FirstOrDefault(
             p => p.SequenceNumber == request.Request.PeriodSequenceNumber);
-
-
 
         // Reject a sequence number outside the Academic Year's periods.
         if (billingPeriod is null)
@@ -68,12 +64,12 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
                 $"in this Academic Year.");
         }
 
-
         // ---------------------------------------------------------
         // PeriodLabel is DERIVED from the resolved billing period,
         // never taken from the request DTO.
         // ---------------------------------------------------------
         var periodLabel = PeriodLabelBuilder.ForBillingPeriod(billingPeriod);
+
         // ---------------------------------------------------------
         // BLOCK: Enforce sequential invoice generation.
         //
@@ -109,7 +105,7 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
                 $"{string.Join(", ", missingPreviousPeriods)}.");
         }
 
-        // Duplicate check now keyed on PeriodSequenceNumber (period identity),
+        // Duplicate check keyed on PeriodSequenceNumber (period identity),
         // NOT on PeriodLabel. Manual / ADMISSION invoices have a null
         // PeriodSequenceNumber, so they never collide with periodic generation.
         var duplicate = await _db.Set<InvoiceEntity>().AnyAsync(i =>
@@ -124,9 +120,14 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
                 $"Invoice already exists for student {request.Request.StudentId} " +
                 $"for period #{billingPeriod.SequenceNumber} ({periodLabel}).");
 
-
         var generationDate = DateTime.UtcNow;
-        var dueDate = request.Request.DueDate ?? generationDate.AddDays(15);
+
+        // ---------------------------------------------------------
+        // DueDate is NOT a request input anymore.
+        // The builder owns the due-date rule and returns it on the
+        // draft — the handler only reads draft.DueDate when mapping
+        // the entity. No DTO value, no fallback logic here.
+        // ---------------------------------------------------------
 
         // ---------------------------------------------------------
         // BLOCK: Build invoice draft for the selected billing period.
@@ -136,7 +137,8 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
         // - Applicable FeeStructure resolution.
         // - FeeHead frequency filtering.
         // - Concession calculations.
-        // - Invoice line snapshots.
+        // - Invoice line snapshots (per-line late fee rules).
+        // - Header late fee snapshots (from FeeStructure header).
         //
         // This method only builds an in-memory draft.
         // It does not save anything to the database.
@@ -152,13 +154,13 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
             billingPeriod: billingPeriod,
             periodLabel: periodLabel,
             generationDate: generationDate,
-            dueDate: dueDate,
             ct: ct);
 
         if (draftResult.IsFailure)
             return draftResult.Error!;
 
         var draft = draftResult.Value;
+
         // --- Mutations start here ---
         var invoiceNumber = await _sequence.NextInvoiceNumberAsync(branchId, ayInfo.Code, ct);
 
@@ -182,6 +184,22 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
             TotalAmount = draft.TotalAmount,
             ConcessionAmount = draft.ConcessionAmount,
             LateFeeAmount = 0m,
+
+            // -----------------------------------------------------
+            // Late fee header snapshots — FROZEN by the builder from
+            // the FeeStructure header at generation time.
+            // Birth certificate: never recomputed, never updated.
+            // The LateFeeEngine reads these at payment / recalc time.
+            // null LateFeeModeSnapshot = legacy per_head behaviour.
+            // -----------------------------------------------------
+            LateFeeModeSnapshot = draft.LateFeeModeSnapshot,
+            InvoiceLateFeeTypeSnapshot = draft.InvoiceLateFeeTypeSnapshot,
+            InvoiceLateFeeValueSnapshot = draft.InvoiceLateFeeValueSnapshot,
+            InvoiceLateFeeGraceDaysSnapshot = draft.InvoiceLateFeeGraceDaysSnapshot,
+            InvoiceLateFeeCapPercentSnapshot = draft.InvoiceLateFeeCapPercentSnapshot,
+            InvoiceLateFeeSlabConfigSnapshot = draft.InvoiceLateFeeSlabConfigSnapshot,
+            InvoiceLateFeeCapBase = draft.InvoiceLateFeeCapBase,
+
             NetPayable = draft.NetPayable,
             PaidAmount = 0m,
             CreditAppliedAmount = 0m,
@@ -212,21 +230,38 @@ public sealed class GenerateStudentInvoiceCommandHandler : IRequestHandler<Gener
             });
         }
 
-        _db.Set<InvoiceEntity>().Add(invoice);
-        await _db.SaveChangesAsync(ct);
-
-        // Concession usage tracking — one row per (allocation, invoice)
-        if (draft.ConcessionUsages.Count > 0)
+        // ---------------------------------------------------------
+        // BLOCK: Persist invoice + lines + concession usages in ONE
+        // transaction. Two separate SaveChangesAsync calls risked an
+        // orphan invoice (invoice saved, zero usage rows) if the second
+        // save failed — breaking concession dedup by ConcessionId.
+        // ---------------------------------------------------------
+        await _db.BeginTransactionAsync(ct);
+        try
         {
-            var usages = draft.ConcessionUsages.Select(u => new ConcessionUsageEntity
-            {
-                ConcessionAllocationId = u.ConcessionAllocationId,
-                InvoiceId = invoice.Id,
-                AppliedAmount = u.AppliedAmount,
-                CreatedAt = DateTime.UtcNow,
-            }).ToList();
-            _db.Set<ConcessionUsageEntity>().AddRange(usages);
+            _db.Set<InvoiceEntity>().Add(invoice);
             await _db.SaveChangesAsync(ct);
+
+            // Concession usage tracking — one row per (allocation, invoice)
+            if (draft.ConcessionUsages.Count > 0)
+            {
+                var usages = draft.ConcessionUsages.Select(u => new ConcessionUsageEntity
+                {
+                    ConcessionAllocationId = u.ConcessionAllocationId,
+                    InvoiceId = invoice.Id,
+                    AppliedAmount = u.AppliedAmount,
+                    CreatedAt = DateTime.UtcNow,
+                }).ToList();
+                _db.Set<ConcessionUsageEntity>().AddRange(usages);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            await _db.CommitTransactionAsync(ct);
+        }
+        catch
+        {
+            await _db.RollbackTransactionAsync(ct);
+            throw;
         }
 
         // TODO (audit): await _auditWriter.LogAsync("Invoices", invoice.Id, FinancialAuditAction.Create, null, invoice, ct);

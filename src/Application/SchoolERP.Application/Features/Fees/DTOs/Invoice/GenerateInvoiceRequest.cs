@@ -10,5 +10,4 @@ public sealed class GenerateInvoiceRequest
     /// The actual dates will be calculated by BillingPeriodCalculator.
     /// </summary>
     public int PeriodSequenceNumber { get; set; }
-    public DateTime? DueDate { get; set; }
 }

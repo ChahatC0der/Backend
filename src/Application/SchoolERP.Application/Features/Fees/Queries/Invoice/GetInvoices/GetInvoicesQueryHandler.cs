@@ -40,6 +40,8 @@ public sealed class GetInvoicesQueryHandler : IRequestHandler<GetInvoicesQuery, 
         if (request.Status.HasValue) query = query.Where(i => i.Status == request.Status.Value);
         if (!string.IsNullOrWhiteSpace(request.PeriodLabel))
             query = query.Where(i => i.PeriodLabel.Contains(request.PeriodLabel.Trim()));
+        if (request.PeriodSequenceNumber.HasValue)
+            query = query.Where(i => i.PeriodSequenceNumber == request.PeriodSequenceNumber.Value);
         if (request.DueDateFrom.HasValue) query = query.Where(i => i.DueDate >= request.DueDateFrom.Value);
         if (request.DueDateTo.HasValue) query = query.Where(i => i.DueDate <= request.DueDateTo.Value);
 
@@ -61,7 +63,6 @@ public sealed class GetInvoicesQueryHandler : IRequestHandler<GetInvoicesQuery, 
         {
             Data = rows.Select(InvoiceResponseFactory.ToListResponse).ToList(),
             Page = page, Size = size, TotalCount = total,
-            //TotalPages = (int)Math.Ceiling(total / (double)size),
         });
     }
 }

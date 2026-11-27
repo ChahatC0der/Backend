@@ -32,6 +32,18 @@ public sealed class CancelInvoiceCommandHandler : IRequestHandler<CancelInvoiceC
         if (invoice.Status == InvoiceStatus.Cancelled)
             return Error.Conflict("Invoice is already cancelled.");
 
+        // ---------------------------------------------------------
+        // BLOCK: ANY money movement on the invoice blocks cancellation,
+        // same rule as regeneration. Cancelling a PartiallyPaid invoice
+        // (or one with credit applied) would orphan its Payment /
+        // StudentCreditLedger rows against a now-cancelled invoice.
+        // Refund or reverse the payment/credit first.
+        // ---------------------------------------------------------
+        if (invoice.PaidAmount > 0m || invoice.CreditAppliedAmount > 0m)
+            return Error.Conflict(
+                "Cannot cancel an invoice with payments or credit already applied. " +
+                "Refund the payment or reverse the credit allocation first.");
+
         invoice.Status = InvoiceStatus.Cancelled;
         invoice.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);

@@ -119,7 +119,7 @@ public static class InvoiceGenerationContextLoader
                 e.StudentId == studentId &&
                 e.AcademicYearId == academicYearId &&
                 e.BranchId == branchId &&
-                e.DeletedAt == null &&
+                //e.DeletedAt == null &&
                 e.EnrolledAt <= billingPeriod.EndDate &&
                 (e.LeftAt == null ||
                  e.LeftAt >= billingPeriod.StartDate))

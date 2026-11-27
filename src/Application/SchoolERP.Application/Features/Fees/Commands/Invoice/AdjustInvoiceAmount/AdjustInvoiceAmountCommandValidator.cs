@@ -8,7 +8,10 @@ public sealed class AdjustInvoiceAmountCommandValidator : AbstractValidator<Adju
     {
         RuleFor(x => x.InvoiceId).GreaterThan(0);
         RuleFor(x => x.Request.InvoiceLineId).GreaterThan(0);
-        RuleFor(x => x.Request.NewAmount).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Request.NewAmount)
+            .GreaterThanOrEqualTo(0)
+            .LessThanOrEqualTo(10_000_000m)
+            .PrecisionScale(18, 2, false);
         RuleFor(x => x.Request.Reason).NotEmpty().MaximumLength(500);
     }
 }

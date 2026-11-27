@@ -1,5 +1,4 @@
-﻿using SchoolERP.Infrastructure.;
-using FeeStructureEntity = SchoolERP.Domain.Fees.Entities.FeeStructure;
+﻿using FeeStructureEntity = SchoolERP.Domain.Fees.Entities.FeeStructure;
 using FeeStructureLineEntity = SchoolERP.Domain.Fees.Entities.FeeStructureLine;
 
 namespace SchoolERP.Application.Features.Fees.DTOs.FeeStructure;

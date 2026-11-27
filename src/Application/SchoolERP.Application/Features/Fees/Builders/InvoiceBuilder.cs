@@ -210,7 +210,7 @@ public static class InvoiceBuilder
                 }
             }
         }
-
+        var structureHeader = structure;
         var draft = new InvoiceDraft
         {
             StudentId = studentId,
@@ -223,7 +223,17 @@ public static class InvoiceBuilder
             DueDate = dueDate,
             TotalAmount = Money.Round(totalAmount),
             ConcessionAmount = Money.Round(totalConcession),
+
             NetPayable = Money.Round(totalAmount - totalConcession),
+
+            // ---- SECTION 4: FREEZE — invoice-header late fee snapshot ----
+            LateFeeModeSnapshot = ResolveHeaderLateFeeMode(structure),
+            InvoiceLateFeeTypeSnapshot = structureHeader.InvoiceLateFeeType,
+            InvoiceLateFeeValueSnapshot = structureHeader.InvoiceLateFeeValue,
+            InvoiceLateFeeGraceDaysSnapshot = structureHeader.InvoiceLateFeeGraceDays,
+            InvoiceLateFeeCapPercentSnapshot = structureHeader.InvoiceLateFeeCapPercent,
+            InvoiceLateFeeSlabConfigSnapshot = structureHeader.InvoiceLateFeeSlabConfig,
+            InvoiceLateFeeCapBase = Money.Round(totalAmount - totalConcession),
             Lines = lineDrafts,
             ConcessionUsages = usageDrafts,
         };
@@ -262,7 +272,6 @@ public static class InvoiceBuilder
         BillingPeriod billingPeriod,
         string periodLabel,
         DateTime generationDate,
-        DateTime dueDate,
         ITransportFeeQuoteProvider? transportProvider = null,
         CancellationToken ct = default)
     {
@@ -524,19 +533,32 @@ public static class InvoiceBuilder
         // BLOCK 14: Construct the InvoiceDraft.
         // ---------------------------------------------------------
 
+        var netPayable = Money.Round(totalAmount - totalConcession);
+        var structureHeader = context.FeeStructure;
+
         var draft = new InvoiceDraft
         {
             StudentId = context.Student.Id,
             AcademicYearId = academicYearId,
             ClassId = context.Enrollment.ClassId,
             SectionId = context.Enrollment.SectionId,
-            FeeStructureId = context.FeeStructure.Id,
+            FeeStructureId = structureHeader.Id,
             PeriodLabel = periodLabel.Trim(),
             GenerationDate = generationDate,
-            DueDate = dueDate,
+            DueDate = billingPeriod.EndDate.ToDateTime(TimeOnly.MinValue),
             TotalAmount = Money.Round(totalAmount),
             ConcessionAmount = Money.Round(totalConcession),
-            NetPayable = Money.Round(totalAmount - totalConcession),
+            NetPayable = netPayable,
+
+            // ---- SECTION 4: FREEZE — invoice-header late fee snapshot ----
+            LateFeeModeSnapshot = ResolveHeaderLateFeeMode(structureHeader),
+            InvoiceLateFeeTypeSnapshot = structureHeader.InvoiceLateFeeType,
+            InvoiceLateFeeValueSnapshot = structureHeader.InvoiceLateFeeValue,
+            InvoiceLateFeeGraceDaysSnapshot = structureHeader.InvoiceLateFeeGraceDays,
+            InvoiceLateFeeCapPercentSnapshot = structureHeader.InvoiceLateFeeCapPercent,
+            InvoiceLateFeeSlabConfigSnapshot = structureHeader.InvoiceLateFeeSlabConfig,
+            InvoiceLateFeeCapBase = netPayable,
+
             Lines = lineDrafts,
             ConcessionUsages = usageDrafts
         };
@@ -574,5 +596,22 @@ public static class InvoiceBuilder
 
         var byGroup = candidates.FirstOrDefault(x => x.ClassGroupId != null && x.ClassId == null && x.SectionId == null);
         return byGroup;
+    }
+
+    /// <summary>
+    /// Resolves the invoice-header late fee mode string frozen onto the invoice.
+    /// FeeStructure.LateFeeMode is a NON-NULLABLE enum — the header always
+    /// carries an explicit mode. No HasValue check, no lines-derived fallback:
+    /// what the school configured is what gets frozen onto every invoice.
+    /// </summary>
+    private static string ResolveHeaderLateFeeMode(FeeStructureEntity structure)
+    {
+        return structure.LateFeeMode switch
+        {
+            LateFeeMode.None => "none",
+            LateFeeMode.PerHead => "per_head",
+            LateFeeMode.WholeInvoice => "whole_invoice",
+            _ => "per_head",
+        };
     }
 }

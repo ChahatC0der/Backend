@@ -15,6 +15,7 @@ public sealed record GetInvoicesQuery : PagedRequest, IQuery<PagedResponse<Invoi
     public long? SectionId { get; set; }
     public InvoiceStatus? Status { get; set; }
     public string? PeriodLabel { get; set; }
+    public int? PeriodSequenceNumber { get; set; }
     public DateTime? DueDateFrom { get; set; }
     public DateTime? DueDateTo { get; set; }
 }

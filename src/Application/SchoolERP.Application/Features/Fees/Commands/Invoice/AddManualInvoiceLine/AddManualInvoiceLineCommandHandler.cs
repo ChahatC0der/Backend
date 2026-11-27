@@ -34,30 +34,35 @@ public sealed class AddManualInvoiceLineCommandHandler : IRequestHandler<AddManu
         if (invoice.Status is InvoiceStatus.Paid or InvoiceStatus.Cancelled)
             return Error.Conflict($"Cannot add lines to a {invoice.Status} invoice.");
 
+        if (invoice.PaidAmount > 0m || invoice.CreditAppliedAmount > 0m)
+            return Error.Conflict("Cannot add a manual line after payment or credit has been applied to this invoice.");
+
         var feeHead = await _db.Set<FeeHeadEntity>().FirstOrDefaultAsync(h =>
             h.Id == request.Request.FeeHeadId && h.TenantId == tenantId && h.BranchId == branchId && h.DeletedAt == null, ct);
         if (feeHead is null) return Error.NotFound("FeeHead", request.Request.FeeHeadId.ToString());
+
+        var amount = Money.Round(request.Request.Amount);
 
         invoice.Lines.Add(new InvoiceLineEntity
         {
             FeeHeadId = feeHead.Id,
             FeeHeadNameSnapshot = feeHead.Name,
-            Amount = request.Request.Amount,
+            Amount = amount,
             ConcessionApplied = 0m,
-            NetAmount = request.Request.Amount,
+            NetAmount = amount,
             IsLateFeeLine = false,
             LateFeeApplicable = false,
-            LateFeeCapBase = request.Request.Amount,
+            LateFeeCapBase = amount,
             CreatedAt = DateTime.UtcNow,
         });
 
-        invoice.TotalAmount = Money.Round(invoice.TotalAmount + request.Request.Amount);
+        invoice.TotalAmount = Money.Round(invoice.TotalAmount + amount);
         invoice.NetPayable = Money.Round(invoice.TotalAmount - invoice.ConcessionAmount + invoice.LateFeeAmount);
         invoice.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(ct);
 
-        // TODO (audit): await _auditWriter.LogAsync("Invoices", invoice.Id, FinancialAuditAction.Update, null, new { AddedLine = feeHead.Name, Amount = request.Request.Amount }, ct);
+        // TODO (audit): await _auditWriter.LogAsync("Invoices", invoice.Id, FinancialAuditAction.Update, null, new { AddedLine = feeHead.Name, Amount = amount }, ct);
 
         return Result.Success(InvoiceResponseFactory.ToResponse(invoice));
     }
