@@ -5,4 +5,4 @@ using SchoolERP.Domain.Shared.Results;
 
 namespace SchoolERP.Application.Features.Fees.Commands.Invoice.GenerateStudentInvoice;
 
-public record GenerateStudentInvoiceCommand(GenerateInvoiceRequest Request) : ICommand<InvoiceResponse>;
+public record GenerateStudentInvoiceCommand(GenerateInvoiceRequest Request) : ICommand<IReadOnlyList<InvoiceResponse>>;
